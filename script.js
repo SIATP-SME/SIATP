@@ -255,11 +255,32 @@ function setupEventListeners() {
 
   if (loginForm) {
 
-    loginForm.addEventListener(
-      "submit",
-      handleLogin
-    );
+  loginForm.addEventListener(
+    "submit",
+    handleLogin
+  );
 
+}
+
+
+/* =========================================
+   MEMBER SIGNUP FORM
+========================================= */
+
+const memberSignupForm =
+  document.getElementById(
+    "memberSignupForm"
+  );
+
+
+if (memberSignupForm) {
+
+  memberSignupForm.addEventListener(
+    "submit",
+    handleMemberSignup
+  );
+
+}
   }
 
 
