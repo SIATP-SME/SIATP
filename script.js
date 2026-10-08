@@ -2,30 +2,6 @@
    SME INTEGRATED ACADEMIC & TRANSPARENCY PLATFORM
    MAIN JAVASCRIPT
    SUPABASE AUTHENTICATION VERSION
-
-   ACCESS LEVELS
-   ---------------------------------------------------------
-   PUBLIC
-      - Video Lessons
-      - Public Reviewers
-
-   PENDING
-      - Authenticated applicant
-      - Cannot access member features
-
-   MEMBER
-      - Approved SME member
-
-   OFFICER
-      - Approved SME officer
-
-   ADMIN
-      - Administrator
-
-   IMPORTANT
-   ---------------------------------------------------------
-   Frontend checks improve UX.
-   Supabase RLS must enforce actual security.
 ========================================================= */
 
 
@@ -37,7 +13,7 @@ const SUPABASE_URL =
   "https://ktlgmgbhacxcvbyomgeo.supabase.co";
 
 const SUPABASE_PUBLISHABLE_KEY =
-  "sb_publishable_fysL0f4fh1t5kUwksnIKFw_SrWXCZ9f";
+  "sb_publishable_fysL0f4fh1t5kUwksnIKFw_SrWXC9Zf";
 
 const supabaseClient =
   window.supabase.createClient(
@@ -52,64 +28,74 @@ const supabaseClient =
 
 const PUBLIC_REVIEWERS = [
   {
-    title: "1st Year General Mathematics",
+    year: "1st Year",
+    title: "General Mathematics",
     description:
-      "A reviewer covering foundational concepts in General Mathematics for first-year students."
+      "Basic mathematical concepts and foundational skills."
   },
+
   {
-    title: "2nd Year College Algebra",
+    year: "2nd Year",
+    title: "College Algebra",
     description:
-      "A reviewer covering important College Algebra concepts and problem-solving techniques."
+      "Algebraic expressions, equations, functions, and applications."
   },
+
   {
-    title: "3rd Year Geometry",
+    year: "3rd Year",
+    title: "Geometry",
     description:
-      "A reviewer covering essential Geometry concepts, theorems, and applications."
+      "Geometric concepts, properties, proofs, and problem solving."
   },
+
   {
-    title: "4th Year Advanced Mathematics",
+    year: "4th Year",
+    title: "Advanced Mathematics",
     description:
-      "A reviewer covering selected advanced mathematics topics for fourth-year students."
+      "Higher-level mathematical concepts and problem-solving strategies."
   }
 ];
 
 
 /* =========================================================
-   VIDEO LESSONS
+   PUBLIC VIDEO LESSONS
 ========================================================= */
 
 const VIDEO_LESSONS = [
   {
     title: "Introduction to Algebra",
     description:
-      "Learn the basic concepts, expressions, variables, and operations used in algebra."
+      "Learn the basic concepts of variables, expressions, and equations."
   },
+
   {
     title: "Understanding Functions",
     description:
-      "Explore functions, their representations, and how to evaluate them."
+      "Explore functions, domain, range, and their representations."
   },
+
   {
     title: "Quadratic Equations",
     description:
-      "Understand quadratic equations and different methods of solving them."
+      "Learn different methods for solving quadratic equations."
   },
+
   {
     title: "Problem-Solving Strategies",
     description:
-      "Learn practical strategies for approaching and solving mathematical problems."
+      "Explore strategies that can help students solve mathematical problems."
   }
 ];
 
 
 /* =========================================================
-   APPLICATION STATE
+   FRONTEND STATE
 ========================================================= */
 
 let currentMember = null;
 let currentSession = null;
 
-let toastTimeout = null;
+let toastTimeout;
 
 let authInitialized = false;
 let profileLoading = false;
@@ -117,20 +103,16 @@ let loadedProfileUserId = null;
 
 
 /* =========================================================
-   DOM REFERENCES
+   DOM ELEMENTS
 ========================================================= */
 
-let overlay = null;
-let toast = null;
-let navAuthArea = null;
-
-let loginForm = null;
-let signupForm = null;
-
-let memberName = null;
-
-let redCardYear = null;
-let redCardTableBody = null;
+let overlay;
+let toast;
+let navAuthArea;
+let loginForm;
+let memberName;
+let redCardYear;
+let redCardTableBody;
 
 
 /* =========================================================
@@ -141,45 +123,33 @@ document.addEventListener(
   "DOMContentLoaded",
   async () => {
 
-    try {
+    console.log(
+      "SME Platform initializing..."
+    );
 
-      cacheDOM();
+    cacheDOM();
 
-      // TEMPORARILY DISABLED
-      // initializeRevealAnimations();
+    initializeRevealAnimations();
 
-      renderPublicReviewers();
+    renderPublicReviewers();
 
-      renderVideoLessons();
+    renderVideoLessons();
 
-      setupEventListeners();
+    setupEventListeners();
 
-      await restoreMemberSession();
+    await restoreMemberSession();
 
-      updateNavigation();
+    updateNavigation();
 
-      updateMemberDashboard();
+    updateMemberDashboard();
 
-      updateRoleBasedUI();
-
-    }
-
-    catch (error) {
-
-      console.error(
-        "SIATP initialization error:",
-        error
-      );
-
-      showToast(
-        "The website encountered an initialization problem. Please refresh the page.",
-        "error"
-      );
-
-    }
+    console.log(
+      "SME Platform initialized."
+    );
 
   }
 );
+
 
 /* =========================================================
    CACHE DOM
@@ -202,28 +172,15 @@ function cacheDOM() {
       "navAuthArea"
     );
 
-
-  /*
-    IMPORTANT:
-    These IDs match the HTML you just sent.
-  */
-
   loginForm =
     document.getElementById(
       "loginForm"
     );
 
-  signupForm =
-    document.getElementById(
-      "memberSignupForm"
-    );
-
-
   memberName =
     document.getElementById(
       "memberName"
     );
-
 
   redCardYear =
     document.getElementById(
@@ -234,6 +191,7 @@ function cacheDOM() {
     document.getElementById(
       "redCardTableBody"
     );
+
 }
 
 
@@ -243,154 +201,57 @@ function cacheDOM() {
 
 function setupEventListeners() {
 
-  /* -------------------------------------------------------
-     ALL DATA-ACTION BUTTONS
-  ------------------------------------------------------- */
-
   document.addEventListener(
     "click",
-    async (event) => {
+    (event) => {
 
       const actionElement =
         event.target.closest(
           "[data-action]"
         );
 
-
-      if (actionElement) {
-
-        event.preventDefault();
-
-
-        const action =
-          actionElement.getAttribute(
-            "data-action"
-          );
-
-
-        if (action) {
-
-          await handleAction(
-            action
-          );
-
-          return;
-        }
-      }
-
-
-      /* ---------------------------------------------------
-         MEMBER FEATURES
-      --------------------------------------------------- */
-
-      const featureElement =
+      const memberElement =
         event.target.closest(
           "[data-member-feature]"
         );
 
 
-      if (featureElement) {
+      /* =========================================
+         NORMAL ACTION
+      ========================================= */
 
-        event.preventDefault();
-
-
-        const feature =
-          featureElement.getAttribute(
-            "data-member-feature"
-          );
-
-
-        if (feature) {
-
-          await openMemberFeature(
-            feature
-          );
-
-          return;
-        }
-      }
-
-
-      /* ---------------------------------------------------
-         REVIEWER FILE
-      --------------------------------------------------- */
-
-      const reviewerFileButton =
-        event.target.closest(
-          "[data-reviewer-file]"
-        );
-
-
-      if (reviewerFileButton) {
-
-        event.preventDefault();
-
-
-        const filePath =
-          reviewerFileButton.getAttribute(
-            "data-reviewer-file"
-          );
-
-
-        if (filePath) {
-
-          await openReviewerFile(
-            filePath
-          );
-        }
-
-        return;
-      }
-
-
-      /* ---------------------------------------------------
-         REVIEWER VERIFICATION
-      --------------------------------------------------- */
-
-      const verificationButton =
-        event.target.closest(
-          "[data-reviewer-verification-action]"
-        );
-
-
-      if (verificationButton) {
-
-        event.preventDefault();
-
+      if (actionElement) {
 
         const action =
-          verificationButton.getAttribute(
-            "data-reviewer-verification-action"
-          );
+          actionElement.dataset.action;
 
-
-        const submissionId =
-          verificationButton.getAttribute(
-            "data-submission-id"
-          );
-
-
-        if (
-          action &&
-          submissionId
-        ) {
-
-          await handleReviewerVerificationAction(
-            action,
-            submissionId
-          );
-        }
+        handleAction(action);
 
         return;
+
+      }
+
+
+      /* =========================================
+         MEMBER FEATURE
+      ========================================= */
+
+      if (memberElement) {
+
+        const feature =
+          memberElement.dataset.memberFeature;
+
+        openMemberFeature(feature);
+
       }
 
     }
   );
 
 
-  /* -------------------------------------------------------
-     LOGIN
-  ------------------------------------------------------- */
+  /* =========================================
+     LOGIN FORM
+  ========================================= */
 
   if (loginForm) {
 
@@ -398,25 +259,36 @@ function setupEventListeners() {
       "submit",
       handleLogin
     );
+
   }
 
 
-  /* -------------------------------------------------------
-     SIGNUP
-  ------------------------------------------------------- */
+  /* =========================================
+     RED CARD YEAR
+  ========================================= */
 
-  if (signupForm) {
+ const redCardYear =
+  document.getElementById(
+    "redCardYear"
+  );
 
-    signupForm.addEventListener(
-      "submit",
-      handleMemberSignup
-    );
-  }
+if (redCardYear) {
+
+  redCardYear.addEventListener(
+    "change",
+    () => {
+
+      loadRedCardRecords();
+
+    }
+  );
+
+}
 
 
-  /* -------------------------------------------------------
-     REVIEWER UPLOAD
-  ------------------------------------------------------- */
+  /* =========================================
+     REVIEWER UPLOAD FORM
+  ========================================= */
 
   const reviewerUploadForm =
     document.getElementById(
@@ -430,34 +302,13 @@ function setupEventListeners() {
       "submit",
       handleReviewerUpload
     );
+
   }
 
 
-  /* -------------------------------------------------------
-     RED CARD FILTER
-  ------------------------------------------------------- */
-
-  if (redCardYear) {
-
-    redCardYear.addEventListener(
-      "change",
-      async () => {
-
-        if (
-          hasApprovedMemberAccess()
-        ) {
-
-          await loadRedCardRecords();
-        }
-
-      }
-    );
-  }
-
-
-  /* -------------------------------------------------------
-     OVERLAY
-  ------------------------------------------------------- */
+  /* =========================================
+     CLOSE MODAL BY CLICKING OUTSIDE
+  ========================================= */
 
   if (overlay) {
 
@@ -470,16 +321,18 @@ function setupEventListeners() {
         ) {
 
           closeAllWindows();
+
         }
 
       }
     );
+
   }
 
 
-  /* -------------------------------------------------------
+  /* =========================================
      ESCAPE KEY
-  ------------------------------------------------------- */
+  ========================================= */
 
   document.addEventListener(
     "keydown",
@@ -490,10 +343,12 @@ function setupEventListeners() {
       ) {
 
         closeAllWindows();
+
       }
 
     }
   );
+
 }
 
 
@@ -501,44 +356,35 @@ function setupEventListeners() {
    ACTION HANDLER
 ========================================================= */
 
-async function handleAction(
-  action
-) {
+function handleAction(action) {
 
   switch (action) {
 
     case "member-login":
 
-      openWindow(
-        "login"
-      );
+      if (isMemberLoggedIn()) {
 
-      break;
+        openWindow("dashboard");
 
+      } else {
 
-    case "member-signup":
+        openWindow("login");
 
-      openWindow(
-        "memberSignup"
-      );
+      }
 
       break;
 
 
     case "public-lessons":
 
-      openWindow(
-        "videoLessons"
-      );
+      openWindow("public-lessons");
 
       break;
 
 
     case "public-reviewers":
 
-      openWindow(
-        "publicReviewers"
-      );
+      openWindow("public-reviewers");
 
       break;
 
@@ -552,7 +398,7 @@ async function handleAction(
 
     case "logout":
 
-      await handleLogout();
+      logoutMember();
 
       break;
 
@@ -560,163 +406,31 @@ async function handleAction(
     default:
 
       console.warn(
-        "Unknown data-action:",
+        "Unknown action:",
         action
       );
+
   }
+
 }
 
 
 /* =========================================================
-   AUTHENTICATION HELPERS
+   MEMBER FEATURE ACCESS
 ========================================================= */
 
-function isAuthenticated() {
+function openMemberFeature(feature) {
 
-  return Boolean(
-    currentSession &&
-    currentSession.user
-  );
-}
-
-
-function getCurrentRole() {
-
-  return String(
-    currentMember?.role || ""
-  )
-    .trim()
-    .toLowerCase();
-}
-
-
-function hasApprovedMemberAccess() {
-
-  return [
-    "member",
-    "officer",
-    "admin"
-  ].includes(
-    getCurrentRole()
-  );
-}
-
-
-function isOfficerOrAdmin() {
-
-  return [
-    "officer",
-    "admin"
-  ].includes(
-    getCurrentRole()
-  );
-}
-
-
-function isPendingApplicant() {
-
-  return (
-    getCurrentRole() ===
-    "pending"
-  );
-}
-
-
-/* =========================================================
-   ACCESS DENIED
-========================================================= */
-
-function showAccessDeniedMessage() {
-
-  if (
-    isPendingApplicant()
-  ) {
+  if (!isMemberLoggedIn()) {
 
     showToast(
-      "Your SME membership application is still pending assessment.",
-      "info"
+      "🔒 Please log in as an SME Member first."
     );
 
-    return;
-  }
-
-
-  if (
-    !isAuthenticated()
-  ) {
-
-    showToast(
-      "Please log in with an approved SME member account.",
-      "warning"
-    );
-
-    openWindow(
-      "login"
-    );
+    openWindow("login");
 
     return;
-  }
 
-
-  showToast(
-    "You do not have permission to access this feature.",
-    "error"
-  );
-}
-
-
-/* =========================================================
-   MEMBER FEATURE
-========================================================= */
-
-async function openMemberFeature(
-  feature
-) {
-
-  /* -------------------------------------------------------
-     OFFICER / ADMIN FEATURE
-  ------------------------------------------------------- */
-
-  if (
-    feature ===
-    "reviewer-verification"
-  ) {
-
-    if (
-      !isOfficerOrAdmin()
-    ) {
-
-      showToast(
-        "Officer or Admin access is required.",
-        "error"
-      );
-
-      return;
-    }
-
-
-    openWindow(
-      "reviewerVerification"
-    );
-
-
-    await loadReviewerVerificationSubmissions();
-
-    return;
-  }
-
-
-  /* -------------------------------------------------------
-     NORMAL MEMBER FEATURES
-  ------------------------------------------------------- */
-
-  if (
-    !hasApprovedMemberAccess()
-  ) {
-
-    showAccessDeniedMessage();
-
-    return;
   }
 
 
@@ -724,62 +438,42 @@ async function openMemberFeature(
 
     case "dashboard":
 
-      openWindow(
-        "memberDashboard"
-      );
+      openWindow("dashboard");
 
       break;
 
 
     case "finance":
 
-      openWindow(
-        "finance"
-      );
-
-      await loadFinanceRecords();
+      openWindow("finance");
 
       break;
 
 
     case "red-card":
 
-      openWindow(
-        "redCard"
-      );
-
-      await loadRedCardRecords();
+      openWindow("red-card");
 
       break;
 
 
     case "member-reviewers":
 
-      openWindow(
-        "memberReviewers"
-      );
-
-      await loadMemberReviewers();
+      openWindow("member-reviewers");
 
       break;
 
 
     case "announcements":
 
-      openWindow(
-        "announcements"
-      );
+      openWindow("announcements");
 
       break;
 
 
     case "upload-reviewer":
 
-      openWindow(
-        "uploadReviewer"
-      );
-
-      await loadMyReviewerSubmissions();
+      openWindow("upload-reviewer");
 
       break;
 
@@ -790,68 +484,43 @@ async function openMemberFeature(
         "Unknown member feature:",
         feature
       );
+
   }
+
 }
 
 
 /* =========================================================
-   WINDOW MANAGEMENT
+   OPEN WINDOW
 ========================================================= */
 
-function openWindow(
-  windowName
-) {
+function openWindow(windowName) {
 
-  /* -------------------------------------------------------
-     MAP JAVASCRIPT NAMES TO ACTUAL HTML IDS
-  ------------------------------------------------------- */
+  let target =
+    document.querySelector(
+      `[data-window="${windowName}"]`
+    );
 
-  const windowMap = {
 
-    login:
-      "loginWindow",
+  if (!target) {
 
-    memberSignup:
-      "memberSignupWindow",
+    console.warn(
+      `Window "${windowName}" not found.`
+    );
 
-    videoLessons:
-      "videoLessonsWindow",
+    return;
 
-    publicReviewers:
-      "publicReviewersWindow",
-
-    memberDashboard:
-      "memberDashboardWindow",
-
-    finance:
-      "financeWindow",
-
-    redCard:
-      "redCardWindow",
-
-    memberReviewers:
-      "memberReviewersWindow",
-
-    announcements:
-      "announcementsWindow",
-
-    uploadReviewer:
-      "uploadReviewerWindow",
-
-    reviewerVerification:
-      "reviewerVerificationWindow"
-
-  };
+  }
 
 
   const protectedWindows = [
 
-    "memberDashboard",
+    "dashboard",
     "finance",
-    "redCard",
-    "memberReviewers",
+    "red-card",
+    "member-reviewers",
     "announcements",
-    "uploadReviewer"
+    "upload-reviewer"
 
   ];
 
@@ -860,68 +529,36 @@ function openWindow(
     protectedWindows.includes(
       windowName
     ) &&
-    !hasApprovedMemberAccess()
-  ) {
-
-    showAccessDeniedMessage();
-
-    return;
-  }
-
-
-  if (
-    windowName ===
-    "reviewerVerification" &&
-    !isOfficerOrAdmin()
+    !isMemberLoggedIn()
   ) {
 
     showToast(
-      "Officer or Admin access is required.",
-      "error"
+      "🔒 This section requires SME Member access."
     );
 
-    return;
+
+    target =
+      document.querySelector(
+        '[data-window="login"]'
+      );
+
+
+    if (!target) {
+
+      return;
+
+    }
+
+
+    windowName = "login";
+
   }
 
 
-  closeAllWindows();
+  closeAllWindows(false);
 
 
-  const elementId =
-    windowMap[
-      windowName
-    ];
-
-
-  if (!elementId) {
-
-    console.warn(
-      "Unknown window:",
-      windowName
-    );
-
-    return;
-  }
-
-
-  const windowElement =
-    document.getElementById(
-      elementId
-    );
-
-
-  if (!windowElement) {
-
-    console.error(
-      "Window element not found:",
-      elementId
-    );
-
-    return;
-  }
-
-
-  windowElement.classList.add(
+  target.classList.add(
     "active"
   );
 
@@ -936,39 +573,89 @@ function openWindow(
       "aria-hidden",
       "false"
     );
+
   }
 
 
   document.body.classList.add(
-    "modal-open"
+    "no-scroll"
   );
+
+
+  if (
+    windowName === "dashboard"
+  ) {
+
+    updateMemberDashboard();
+
+  }
+
+
+  if (
+    windowName === "red-card"
+  ) {
+
+    renderRedCardRecords();
+
+  }
+
+
+  if (
+    windowName === "member-reviewers"
+  ) {
+
+    loadMemberReviewers();
+
+  }
+
+
+  if (
+    windowName === "finance"
+  ) {
+
+    loadFinanceRecords();
+
+  }
+
+
+  if (
+    windowName === "upload-reviewer"
+  ) {
+
+    loadMyReviewerSubmissions();
+
+  }
+
 }
 
 
-function closeAllWindows() {
+/* =========================================================
+   CLOSE WINDOWS
+========================================================= */
 
-  const windows =
-    document.querySelectorAll(
+function closeAllWindows(
+  hideOverlay = true
+) {
+
+  document
+    .querySelectorAll(
       ".site-window"
+    )
+    .forEach(
+      (windowElement) => {
+
+        windowElement.classList.remove(
+          "active"
+        );
+
+      }
     );
 
 
-  windows.forEach(
-    (windowElement) => {
-
-      windowElement.classList.remove(
-        "active"
-      );
-
-      windowElement.classList.remove(
-        "show"
-      );
-
-    }
-  );
-
-
-  if (overlay) {
+  if (
+    hideOverlay &&
+    overlay
+  ) {
 
     overlay.classList.remove(
       "active"
@@ -978,12 +665,13 @@ function closeAllWindows() {
       "aria-hidden",
       "true"
     );
+
+    document.body.classList.remove(
+      "no-scroll"
+    );
+
   }
 
-
-  document.body.classList.remove(
-    "modal-open"
-  );
 }
 
 
@@ -991,556 +679,159 @@ function closeAllWindows() {
    LOGIN
 ========================================================= */
 
-async function handleLogin(
-  event
-) {
+async function handleLogin(event) {
 
   event.preventDefault();
 
-
-  /*
-    MATCHES YOUR HTML:
-    memberEmail
-    memberPassword
-  */
 
   const emailInput =
     document.getElementById(
       "memberEmail"
     );
 
-
   const passwordInput =
     document.getElementById(
       "memberPassword"
     );
 
-
-  const message =
+  const loginMessage =
     document.getElementById(
       "loginMessage"
     );
 
 
   const email =
-    emailInput?.value.trim() ||
-    "";
-
+    emailInput
+      ? emailInput.value.trim()
+      : "";
 
   const password =
-    passwordInput?.value ||
-    "";
+    passwordInput
+      ? passwordInput.value
+      : "";
 
 
-  if (
-    !email ||
-    !password
-  ) {
+  if (!email || !password) {
 
-    setFormMessage(
-      message,
-      "Please enter your email and password.",
-      "error"
-    );
+    if (loginMessage) {
+
+      loginMessage.textContent =
+        "Please enter your email and password.";
+
+    }
 
     return;
+
   }
 
 
-  setFormMessage(
-    message,
-    "Logging in...",
-    "info"
+  if (loginMessage) {
+
+    loginMessage.textContent =
+      "Signing in...";
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient.auth.signInWithPassword({
+
+      email,
+      password
+
+    });
+
+
+if (error) {
+
+  console.error(
+    "Supabase login error:",
+    error
   );
 
 
-  try {
+  if (loginMessage) {
 
-    const {
-      data,
-      error
-    } =
-      await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
-
-
-    if (error) {
-
-      throw error;
-    }
-
-
-    if (
-      !data?.session
-    ) {
-
-      throw new Error(
-        "Login succeeded, but no session was returned."
-      );
-    }
-
-
-    await applyAuthSession(
-      data.session
-    );
-
-
-    const role =
-      getCurrentRole();
-
-
-    if (
-      role ===
-      "pending"
-    ) {
-
-      setFormMessage(
-        message,
-        "Login successful. Your membership application is still pending assessment.",
-        "warning"
-      );
-
-
-      showToast(
-        "Your application is pending assessment.",
-        "info"
-      );
-
-    }
-
-    else if (
-      [
-        "member",
-        "officer",
-        "admin"
-      ].includes(role)
-    ) {
-
-      setFormMessage(
-        message,
-        "Login successful.",
-        "success"
-      );
-
-
-      showToast(
-        "Welcome back!",
-        "success"
-      );
-
-
-      closeAllWindows();
-
-    }
-
-    else {
-
-      setFormMessage(
-        message,
-        "Your account does not currently have an approved SME role.",
-        "warning"
-      );
-
-
-      showToast(
-        "Your account does not have member access.",
-        "warning"
-      );
-    }
-
-
-    updateNavigation();
-    updateMemberDashboard();
+    loginMessage.textContent =
+      `${error.name || "Auth Error"}: ${error.message}`;
 
   }
 
-  catch (error) {
 
-    console.error(
-      "Login error:",
-      error
-    );
+  showToast(
+    `❌ ${error.message}`
+  );
+
+  return;
+
+}
 
 
-    setFormMessage(
-      message,
-      getSupabaseErrorMessage(
-        error,
-        "Unable to log in."
-      ),
-      "error"
-    );
+  /*
+     signInWithPassword() triggers the
+     auth-state listener automatically.
+
+     Do not load the profile manually here.
+  */
+
+  if (loginMessage) {
+
+    loginMessage.textContent =
+      "";
+
   }
+
+
+  closeAllWindows();
+
+
+  showToast(
+    "✅ Welcome to the SME Member Hub."
+  );
+
 }
 
 
 /* =========================================================
-   SIGNUP
-========================================================= */
-
-async function handleMemberSignup(
-  event
-) {
-
-  event.preventDefault();
-
-
-  const firstName =
-    getInputValue(
-      "signupFirstName"
-    );
-
-
-  const middleName =
-    getInputValue(
-      "signupMiddleName"
-    );
-
-
-  const lastName =
-    getInputValue(
-      "signupLastName"
-    );
-
-
-  const yearLevel =
-    getInputValue(
-      "signupYearLevel"
-    );
-
-
-  const section =
-    getInputValue(
-      "signupSection"
-    );
-
-
-  const email =
-    getInputValue(
-      "signupEmail"
-    );
-
-
-  const password =
-    document.getElementById(
-      "signupPassword"
-    )?.value ||
-    "";
-
-
-  const confirmPassword =
-    document.getElementById(
-      "signupConfirmPassword"
-    )?.value ||
-    "";
-
-
-  const message =
-    document.getElementById(
-      "signupMessage"
-    );
-
-
-  if (
-    !firstName ||
-    !lastName ||
-    !yearLevel ||
-    !section ||
-    !email ||
-    !password ||
-    !confirmPassword
-  ) {
-
-    setFormMessage(
-      message,
-      "Please complete all required fields.",
-      "error"
-    );
-
-    return;
-  }
-
-
-  if (
-    password.length <
-    6
-  ) {
-
-    setFormMessage(
-      message,
-      "Password must contain at least 6 characters.",
-      "error"
-    );
-
-    return;
-  }
-
-
-  if (
-    password !==
-    confirmPassword
-  ) {
-
-    setFormMessage(
-      message,
-      "Passwords do not match.",
-      "error"
-    );
-
-    return;
-  }
-
-
-  setFormMessage(
-    message,
-    "Submitting your membership application...",
-    "info"
-  );
-
-
-  try {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient.auth.signUp({
-
-        email,
-
-        password,
-
-        options: {
-
-          data: {
-
-            first_name:
-              firstName,
-
-            middle_name:
-              middleName,
-
-            last_name:
-              lastName,
-
-            year_level:
-              yearLevel,
-
-            section:
-              section
-
-          }
-
-        }
-
-      });
-
-
-    if (error) {
-
-      throw error;
-    }
-
-
-    /*
-      If email confirmation is enabled,
-      Supabase may return a user without
-      a session.
-    */
-
-    if (
-      data?.session
-    ) {
-
-      await applyAuthSession(
-        data.session
-      );
-
-
-      setFormMessage(
-        message,
-        "Application submitted successfully. Your account is pending SME assessment.",
-        "success"
-      );
-
-    }
-
-    else {
-
-      setFormMessage(
-        message,
-        "Application submitted successfully. Please check your email if confirmation is required. Your SME membership is still pending assessment.",
-        "success"
-      );
-    }
-
-
-    const passwordElement =
-      document.getElementById(
-        "signupPassword"
-      );
-
-
-    const confirmPasswordElement =
-      document.getElementById(
-        "signupConfirmPassword"
-      );
-
-
-    if (
-      passwordElement
-    ) {
-
-      passwordElement.value =
-        "";
-    }
-
-
-    if (
-      confirmPasswordElement
-    ) {
-
-      confirmPasswordElement.value =
-        "";
-    }
-
-
-    showToast(
-      "Membership application submitted.",
-      "success"
-    );
-
-
-    updateNavigation();
-    updateMemberDashboard();
-
-  }
-
-  catch (error) {
-
-    console.error(
-      "Signup error:",
-      error
-    );
-
-
-    setFormMessage(
-      message,
-      getSupabaseErrorMessage(
-        error,
-        "Unable to submit your application."
-      ),
-      "error"
-    );
-  }
-}
-
-
-/* =========================================================
-   SESSION RESTORE
+   RESTORE MEMBER SESSION
 ========================================================= */
 
 async function restoreMemberSession() {
 
-  try {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient.auth.getSession();
+  const {
+    data,
+    error
+  } =
+    await supabaseClient.auth.getSession();
 
 
-    if (error) {
-
-      throw error;
-    }
-
-
-    if (
-      data?.session
-    ) {
-
-      await applyAuthSession(
-        data.session
-      );
-
-    }
-
-    else {
-
-      clearAuthState();
-    }
-
-  }
-
-  catch (error) {
+  if (error) {
 
     console.error(
       "Session restoration error:",
       error
     );
 
+    return;
 
-    clearAuthState();
   }
 
 
-  if (
-    !authInitialized
-  ) {
+  /*
+     Apply the current session.
 
-    authInitialized =
-      true;
+     Profile loading is handled by
+     applyAuthSession().
+  */
 
+  await applyAuthSession(
+    data.session,
+    true
+  );
 
-    supabaseClient.auth.onAuthStateChange(
-      (event, session) => {
-
-        setTimeout(
-          async () => {
-
-            try {
-
-              await applyAuthSession(
-                session
-              );
-
-
-              updateNavigation();
-               function updateRoleBasedUI() {
-  const reviewerVerificationButton =
-    document.querySelector('[data-member-feature="reviewer-verification"]');
-
-  if (!reviewerVerificationButton) return;
-
-  if (isOfficerOrAdmin()) {
-    reviewerVerificationButton.style.display = "";
-  } else {
-    reviewerVerificationButton.style.display = "none";
-  }
-}
-              updateMemberDashboard();
-
-            }
-
-            catch (error) {
-
-              console.error(
-                "Auth state handling error:",
-                error
-              );
-            }
-
-          },
-          0
-        );
-
-      }
-    );
-  }
 }
 
 
@@ -1549,73 +840,103 @@ async function restoreMemberSession() {
 ========================================================= */
 
 async function applyAuthSession(
-  session
+  session,
+  isInitialSession = false
 ) {
+
+  currentSession =
+    session || null;
+
 
   if (
     !session ||
     !session.user
   ) {
 
-    clearAuthState();
+    currentMember = null;
+
+    loadedProfileUserId = null;
+
+    updateNavigation();
+
+    updateMemberDashboard();
 
     return;
+
   }
 
 
-  currentSession =
-    session;
-
-
   currentMember =
-    null;
+    session.user;
 
 
-  loadedProfileUserId =
-    null;
+  /*
+     Load the profile only when this user
+     has not already been loaded.
+  */
+
+  if (
+    loadedProfileUserId !==
+    currentMember.id
+  ) {
+
+    await loadCurrentMemberProfile();
+
+  }
 
 
-  await loadCurrentMemberProfile();
+  authInitialized = true;
 
 
   updateNavigation();
+
   updateMemberDashboard();
+
 }
 
 
 /* =========================================================
-   LOAD PROFILE
+   LOAD CURRENT MEMBER PROFILE
 ========================================================= */
 
 async function loadCurrentMemberProfile() {
 
-  if (
-    !currentSession?.user?.id
-  ) {
-
-    currentMember =
-      null;
+  if (!currentMember) {
 
     return;
+
   }
 
 
   const userId =
-    currentSession.user.id;
+    currentMember.id;
 
+
+  /*
+     Prevent duplicate profile requests.
+  */
 
   if (
-    profileLoading &&
-    loadedProfileUserId ===
-      userId
+    loadedProfileUserId === userId
   ) {
 
     return;
+
   }
 
 
-  profileLoading =
-    true;
+  /*
+     Prevent simultaneous profile requests.
+  */
+
+  if (profileLoading) {
+
+    return;
+
+  }
+
+
+  profileLoading = true;
 
 
   try {
@@ -1633,160 +954,90 @@ async function loadCurrentMemberProfile() {
           "id",
           userId
         )
-        .maybeSingle();
+        .single();
 
 
     if (error) {
 
-      throw error;
+      console.error(
+        "Profile loading error:",
+        error
+      );
+
+      showToast(
+        "⚠️ Unable to load your SME profile."
+      );
+
+      return;
+
     }
 
 
     /*
-      FAIL CLOSED
-
-      Never automatically turn an authenticated
-      user into a member.
+       Make sure the session has not changed
+       while the profile was loading.
     */
 
-    if (!data) {
+    if (
+      !currentMember ||
+      currentMember.id !== userId
+    ) {
 
-      currentMember = {
-
-        id:
-          userId,
-
-        name:
-          currentSession.user
-            .user_metadata
-            ?.first_name ||
-          currentSession.user.email ||
-          "User",
-
-        email:
-          currentSession.user.email ||
-          "",
-
-        role:
-          "pending",
-
-        year_level:
-          "",
-
-        section:
-          ""
-
-      };
+      return;
 
     }
 
-    else {
 
-      currentMember = {
+    currentMember.profile =
+      data;
 
-        id:
-          data.id,
 
-        name:
-          data.full_name ||
-          currentSession.user
-            .user_metadata
-            ?.first_name ||
-          data.email ||
-          currentSession.user.email ||
-          "Member",
+    currentMember.name =
+      data.full_name ||
+      data.email ||
+      currentMember.email ||
+      "SME Member";
 
-        email:
-          data.email ||
-          currentSession.user.email ||
-          "",
 
-        role:
-          String(
-            data.role ||
-            "pending"
-          ).toLowerCase(),
+    currentMember.role =
+      data.role ||
+      "member";
 
-        year_level:
-          data.year_level ||
-          "",
 
-        section:
-          data.section ||
-          ""
+    currentMember.year_level =
+      data.year_level ||
+      "";
 
-      };
-    }
+
+    currentMember.section =
+      data.section ||
+      "";
 
 
     loadedProfileUserId =
       userId;
 
-  }
 
-  catch (error) {
+  } finally {
 
-    console.error(
-      "Profile loading error:",
-      error
-    );
-
-
-    /*
-      FAIL CLOSED
-    */
-
-    currentMember = {
-
-      id:
-        userId,
-
-      name:
-        currentSession.user.email ||
-        "User",
-
-      email:
-        currentSession.user.email ||
-        "",
-
-      role:
-        "pending",
-
-      year_level:
-        "",
-
-      section:
-        ""
-
-    };
+    profileLoading = false;
 
   }
 
-  finally {
-
-    profileLoading =
-      false;
-  }
 }
 
 
 /* =========================================================
-   CLEAR AUTH
+   CHECK LOGIN
 ========================================================= */
 
-function clearAuthState() {
+function isMemberLoggedIn() {
 
-  currentSession =
-    null;
+  return Boolean(
+    currentSession &&
+    currentSession.user
+  );
 
-  currentMember =
-    null;
-
-  loadedProfileUserId =
-    null;
-
-  profileLoading =
-    false;
 }
 
 
@@ -1794,56 +1045,109 @@ function clearAuthState() {
    LOGOUT
 ========================================================= */
 
-async function handleLogout() {
+async function logoutMember() {
 
-  try {
-
-    const {
-      error
-    } =
-      await supabaseClient.auth.signOut();
+  const {
+    error
+  } =
+    await supabaseClient.auth.signOut();
 
 
-    if (error) {
-
-      throw error;
-    }
-
-
-    clearAuthState();
-
-
-    closeAllWindows();
-
-
-    updateNavigation();
-    updateMemberDashboard();
-
-
-    showToast(
-      "You have been logged out.",
-      "success"
-    );
-
-  }
-
-  catch (error) {
+  if (error) {
 
     console.error(
       "Logout error:",
       error
     );
 
-
     showToast(
-      getSupabaseErrorMessage(
-        error,
-        "Unable to log out."
-      ),
-      "error"
+      "❌ Unable to log out. Please try again."
     );
+
+    return;
+
   }
+
+
+  currentSession = null;
+
+  currentMember = null;
+
+  loadedProfileUserId = null;
+
+  authInitialized = false;
+
+
+  updateNavigation();
+
+  updateMemberDashboard();
+
+  closeAllWindows();
+
+
+  showToast(
+    "👋 You have been logged out."
+  );
+
 }
+
+
+/* =========================================================
+   AUTH STATE LISTENER
+========================================================= */
+
+supabaseClient.auth.onAuthStateChange(
+  (
+    event,
+    session
+  ) => {
+
+    console.log(
+      "Auth state changed:",
+      event
+    );
+
+
+    /*
+       Supabase recommends avoiding additional
+       Supabase requests directly inside the
+       auth-state callback.
+
+       Process the session after the callback.
+    */
+
+    setTimeout(
+      async () => {
+
+        /*
+           The initial session is already handled
+           by restoreMemberSession().
+
+           Once initialization is complete,
+           we do not need to process INITIAL_SESSION
+           again.
+        */
+
+        if (
+          event === "INITIAL_SESSION" &&
+          authInitialized
+        ) {
+
+          return;
+
+        }
+
+
+        await applyAuthSession(
+          session
+        );
+
+      },
+      0
+    );
+
+  }
+);
 
 
 /* =========================================================
@@ -1855,12 +1159,19 @@ function updateNavigation() {
   if (!navAuthArea) {
 
     return;
+
   }
 
 
   if (
-    !isAuthenticated()
+    isMemberLoggedIn()
   ) {
+
+    const name =
+      currentMember?.name ||
+      currentMember?.email ||
+      "SME Member";
+
 
     navAuthArea.innerHTML = `
 
@@ -1870,76 +1181,24 @@ function updateNavigation() {
         data-action="member-login"
       >
 
-        🔐 Member Login
+        👤 ${escapeHTML(name)}
+
+      </button>
+
+      <button
+        class="nav-button"
+        type="button"
+        data-action="logout"
+      >
+
+        Logout
 
       </button>
 
     `;
 
     return;
-  }
 
-
-  const fullName =
-    currentMember?.name ||
-    currentSession?.user?.email ||
-    "Member";
-
-
-  const firstName =
-    String(
-      fullName
-    )
-      .trim()
-      .split(/\s+/)[0] ||
-    "Member";
-
-
-  const role =
-    getCurrentRole();
-
-
-  let roleLabel =
-    "";
-
-
-  if (
-    role ===
-    "pending"
-  ) {
-
-    roleLabel =
-      "Pending";
-
-  }
-
-  else if (
-    role ===
-    "officer"
-  ) {
-
-    roleLabel =
-      "Officer";
-
-  }
-
-  else if (
-    role ===
-    "admin"
-  ) {
-
-    roleLabel =
-      "Admin";
-
-  }
-
-  else if (
-    role ===
-    "member"
-  ) {
-
-    roleLabel =
-      "Member";
   }
 
 
@@ -1948,47 +1207,20 @@ function updateNavigation() {
     <button
       class="nav-button"
       type="button"
-      data-member-feature="dashboard"
+      data-action="member-login"
     >
 
-      👤 ${escapeHTML(
-        firstName
-      )}
-
-    </button>
-
-
-    ${
-      roleLabel
-        ? `
-          <span
-            class="nav-role-label"
-          >
-            ${escapeHTML(
-              roleLabel
-            )}
-          </span>
-        `
-        : ""
-    }
-
-
-    <button
-      class="nav-button"
-      type="button"
-      data-action="logout"
-    >
-
-      Logout
+      🔐 Member Login
 
     </button>
 
   `;
+
 }
 
 
 /* =========================================================
-   MEMBER DASHBOARD
+   DASHBOARD
 ========================================================= */
 
 function updateMemberDashboard() {
@@ -1996,66 +1228,37 @@ function updateMemberDashboard() {
   if (!memberName) {
 
     return;
+
   }
 
 
   if (
-    !isAuthenticated()
+    !isMemberLoggedIn() ||
+    !currentMember
   ) {
 
     memberName.textContent =
-      "Guest";
+      "Unauthorized";
 
     return;
+
   }
 
 
   const name =
-    currentMember?.name ||
-    currentSession?.user?.email ||
-    "User";
+    currentMember.name ||
+    currentMember.email ||
+    "SME Member";
 
 
   const role =
-    getCurrentRole();
-
-
-  let roleText =
-    "Pending Assessment";
-
-
-  if (
-    role ===
-    "member"
-  ) {
-
-    roleText =
-      "SME Member";
-  }
-
-
-  if (
-    role ===
-    "officer"
-  ) {
-
-    roleText =
-      "SME Officer";
-  }
-
-
-  if (
-    role ===
-    "admin"
-  ) {
-
-    roleText =
-      "Administrator";
-  }
+    currentMember.role ||
+    "member";
 
 
   memberName.textContent =
-    `${name} — ${roleText}`;
+    `${name} — ${role}`;
+
 }
 
 
@@ -2064,11 +1267,6 @@ function updateMemberDashboard() {
 ========================================================= */
 
 function renderPublicReviewers() {
-
-  /*
-    MATCHES YOUR HTML:
-    publicReviewerList
-  */
 
   const container =
     document.getElementById(
@@ -2079,33 +1277,41 @@ function renderPublicReviewers() {
   if (!container) {
 
     return;
+
   }
 
 
   container.innerHTML =
-    PUBLIC_REVIEWERS.map(
-      (reviewer) => `
+    PUBLIC_REVIEWERS
+      .map(
+        (reviewer) => `
 
-        <article
-          class="detail-card"
-        >
+          <article class="folder-card">
 
-          <h4>
-            ${escapeHTML(
-              reviewer.title
-            )}
-          </h4>
+            <span>
+              ${escapeHTML(
+                reviewer.year
+              )}
+            </span>
 
-          <p>
-            ${escapeHTML(
-              reviewer.description
-            )}
-          </p>
+            <h4>
+              ${escapeHTML(
+                reviewer.title
+              )}
+            </h4>
 
-        </article>
+            <p>
+              ${escapeHTML(
+                reviewer.description
+              )}
+            </p>
 
-      `
-    ).join("");
+          </article>
+
+        `
+      )
+      .join("");
+
 }
 
 
@@ -2114,11 +1320,6 @@ function renderPublicReviewers() {
 ========================================================= */
 
 function renderVideoLessons() {
-
-  /*
-    MATCHES YOUR HTML:
-    videoLessonList
-  */
 
   const container =
     document.getElementById(
@@ -2129,33 +1330,36 @@ function renderVideoLessons() {
   if (!container) {
 
     return;
+
   }
 
 
   container.innerHTML =
-    VIDEO_LESSONS.map(
-      (lesson) => `
+    VIDEO_LESSONS
+      .map(
+        (lesson, index) => `
 
-        <article
-          class="detail-card"
-        >
+          <article>
 
-          <h4>
-            🎥 ${escapeHTML(
-              lesson.title
-            )}
-          </h4>
+            <strong>
+              🎥 ${index + 1}.
+              ${escapeHTML(
+                lesson.title
+              )}
+            </strong>
 
-          <p>
-            ${escapeHTML(
-              lesson.description
-            )}
-          </p>
+            <span>
+              ${escapeHTML(
+                lesson.description
+              )}
+            </span>
 
-        </article>
+          </article>
 
-      `
-    ).join("");
+        `
+      )
+      .join("");
+
 }
 
 
@@ -2163,32 +1367,16 @@ function renderVideoLessons() {
    FINANCE
 ========================================================= */
 
+/* =========================================================
+   FINANCE
+========================================================= */
+
 async function loadFinanceRecords() {
-
-  if (
-    !hasApprovedMemberAccess()
-  ) {
-
-    showAccessDeniedMessage();
-
-    return;
-  }
-
-
-  /*
-    Your HTML does NOT currently have
-    financeTableBody / totalIncome / totalExpenses.
-
-    It has:
-    #financeRecords
-    #financeTransactionList
-  */
 
   const recordContainer =
     document.getElementById(
       "financeRecords"
     );
-
 
   const transactionContainer =
     document.getElementById(
@@ -2196,236 +1384,115 @@ async function loadFinanceRecords() {
     );
 
 
-  if (
-    transactionContainer
-  ) {
+  if (!recordContainer) {
+
+    return;
+
+  }
+
+
+  /*
+     Security check
+
+     The frontend only requests finance data
+     when a user is authenticated.
+
+     Supabase RLS provides the actual protection.
+  */
+
+  if (!isMemberLoggedIn()) {
+
+    recordContainer.innerHTML = `
+      <div class="record-line">
+        <span>Finance Records</span>
+        <strong>Unauthorized</strong>
+      </div>
+    `;
+
+    if (transactionContainer) {
+
+      transactionContainer.innerHTML = `
+        <article>
+          <strong>🔒 Member access required.</strong>
+          <span>
+            Please log in to view SME financial records.
+          </span>
+        </article>
+      `;
+
+    }
+
+    return;
+
+  }
+
+
+  /*
+     Loading state
+  */
+
+  recordContainer.innerHTML = `
+    <div class="record-line">
+      <span>Finance Records</span>
+      <strong>Loading...</strong>
+    </div>
+  `;
+
+
+  if (transactionContainer) {
 
     transactionContainer.innerHTML = `
       <article>
-        <strong>
-          Loading financial records...
-        </strong>
+        <strong>Loading finance records...</strong>
+        <span>
+          Please wait while the latest records are retrieved.
+        </span>
       </article>
     `;
+
   }
 
 
-  try {
+  /*
+     Get finance records from Supabase
+  */
 
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from(
-          "finance_records"
-        )
-        .select(
-          "id, transaction_date, transaction_type, category, description, amount, reference, recorded_by, created_at"
-        )
-        .order(
-          "transaction_date",
-          {
-            ascending: false
-          }
-        );
-
-
-    if (error) {
-
-      throw error;
-    }
-
-
-    const records =
-      Array.isArray(data)
-        ? data
-        : [];
-
-
-    let income =
-      0;
-
-    let expenses =
-      0;
-
-
-    records.forEach(
-      (record) => {
-
-        const amount =
-          Number(
-            record.amount
-          ) || 0;
-
-
-        const type =
-          String(
-            record.transaction_type ||
-            ""
-          ).toLowerCase();
-
-
-        if (
-          type === "income" ||
-          type === "credit" ||
-          type === "deposit"
-        ) {
-
-          income += amount;
-
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("finance_records")
+      .select(`
+        id,
+        transaction_date,
+        transaction_type,
+        category,
+        description,
+        amount,
+        reference,
+        recorded_by,
+        created_at
+      `)
+      .order(
+        "transaction_date",
+        {
+          ascending: false
         }
-
-        else {
-
-          expenses += amount;
+      )
+      .order(
+        "id",
+        {
+          ascending: false
         }
-
-      }
-    );
+      );
 
 
-    const balance =
-      income -
-      expenses;
+  /*
+     Handle database error
+  */
 
-
-    if (
-      recordContainer
-    ) {
-
-      recordContainer.innerHTML = `
-
-        <div class="record-line">
-
-          <span>
-            Total Income
-          </span>
-
-          <strong>
-            ${formatCurrency(
-              income
-            )}
-          </strong>
-
-        </div>
-
-
-        <div class="record-line">
-
-          <span>
-            Total Expenses
-          </span>
-
-          <strong>
-            ${formatCurrency(
-              expenses
-            )}
-          </strong>
-
-        </div>
-
-
-        <div class="record-line">
-
-          <span>
-            Current Balance
-          </span>
-
-          <strong>
-            ${formatCurrency(
-              balance
-            )}
-          </strong>
-
-        </div>
-
-      `;
-    }
-
-
-    if (
-      !transactionContainer
-    ) {
-
-      return;
-    }
-
-
-    if (
-      !records.length
-    ) {
-
-      transactionContainer.innerHTML = `
-
-        <article>
-
-          <strong>
-            No financial records found.
-          </strong>
-
-          <span>
-            There are currently no transactions available.
-          </span>
-
-        </article>
-
-      `;
-
-      return;
-    }
-
-
-    transactionContainer.innerHTML =
-      records.map(
-        (record) => `
-
-          <article>
-
-            <strong>
-
-              ${escapeHTML(
-                record.description ||
-                record.category ||
-                "Transaction"
-              )}
-
-            </strong>
-
-
-            <span>
-
-              ${escapeHTML(
-                formatDate(
-                  record.transaction_date
-                )
-              )}
-
-              ·
-
-              ${escapeHTML(
-                record.transaction_type ||
-                "Transaction"
-              )}
-
-              ·
-
-              ${formatCurrency(
-                Number(
-                  record.amount
-                ) || 0
-              )}
-
-            </span>
-
-          </article>
-
-        `
-      ).join("");
-
-  }
-
-  catch (error) {
+  if (error) {
 
     console.error(
       "Finance loading error:",
@@ -2433,243 +1500,466 @@ async function loadFinanceRecords() {
     );
 
 
-    if (
-      recordContainer
-    ) {
-
-      recordContainer.innerHTML = `
-
-        <div class="record-line">
-
-          <span>
-            Finance Records
-          </span>
-
-          <strong>
-            Unable to load
-          </strong>
-
-        </div>
-
-      `;
-    }
+    recordContainer.innerHTML = `
+      <div class="record-line">
+        <span>Finance Records</span>
+        <strong>Unable to load</strong>
+      </div>
+    `;
 
 
-    if (
-      transactionContainer
-    ) {
+    if (transactionContainer) {
 
       transactionContainer.innerHTML = `
-
         <article>
-
-          <strong>
-            Unable to load financial records.
-          </strong>
-
+          <strong>⚠️ Finance records could not be loaded.</strong>
           <span>
             Please try again later.
           </span>
-
         </article>
-
       `;
+
     }
 
 
     showToast(
-      getSupabaseErrorMessage(
-        error,
-        "Unable to load financial records."
-      ),
-      "error"
+      "⚠️ Unable to load finance records."
     );
-  }
-}
-
-
-/* =========================================================
-   RED CARD
-========================================================= */
-
-async function loadRedCardRecords() {
-
-  if (
-    !hasApprovedMemberAccess()
-  ) {
-
-    showAccessDeniedMessage();
 
     return;
+
   }
 
 
-  if (
-    !redCardTableBody
-  ) {
+  /*
+     Make sure we always have an array.
+  */
 
-    return;
-  }
+  const records =
+    Array.isArray(data)
+      ? data
+      : [];
 
 
-  redCardTableBody.innerHTML = `
+  /*
+     Calculate totals
+  */
 
-    <tr>
+  let totalIncome = 0;
+  let totalExpense = 0;
 
-      <td colspan="7">
-        Loading Red Card records...
-      </td>
 
-    </tr>
+  records.forEach(
+    (record) => {
+
+      const amount =
+        Number(
+          record.amount
+        ) || 0;
+
+
+      if (
+        record.transaction_type ===
+        "income"
+      ) {
+
+        totalIncome += amount;
+
+      }
+
+
+      if (
+        record.transaction_type ===
+        "expense"
+      ) {
+
+        totalExpense += amount;
+
+      }
+
+    }
+  );
+
+
+  const balance =
+    totalIncome -
+    totalExpense;
+
+
+  /*
+     Display summary
+  */
+
+  recordContainer.innerHTML = `
+
+    <div class="record-line">
+
+      <span>
+        Total Income
+      </span>
+
+      <strong>
+        ₱${formatCurrency(totalIncome)}
+      </strong>
+
+    </div>
+
+
+    <div class="record-line">
+
+      <span>
+        Total Expenses
+      </span>
+
+      <strong>
+        ₱${formatCurrency(totalExpense)}
+      </strong>
+
+    </div>
+
+
+    <div class="record-line">
+
+      <span>
+        Current Balance
+      </span>
+
+      <strong>
+        ₱${formatCurrency(balance)}
+      </strong>
+
+    </div>
 
   `;
 
 
-  try {
+  /*
+     No transactions
+  */
 
-    let query =
-      supabaseClient
-        .from(
-          "red_card_records"
-        )
-        .select(
-          "id, member_id, member_name, year_level, section, offense, description, card_level, status, incident_date, recorded_by, created_at"
-        )
-        .order(
-          "incident_date",
-          {
-            ascending: false
-          }
-        );
+  if (
+    records.length === 0
+  ) {
 
+    if (transactionContainer) {
 
-    const selectedYear =
-      redCardYear?.value ||
-      "";
-
-
-    /*
-      "all" means no filter.
-    */
-
-    if (
-      selectedYear &&
-      selectedYear !==
-        "all"
-    ) {
-
-      query =
-        query.eq(
-          "year_level",
-          selectedYear
-        );
-    }
-
-
-    const {
-      data,
-      error
-    } =
-      await query;
-
-
-    if (error) {
-
-      throw error;
-    }
-
-
-    const records =
-      Array.isArray(data)
-        ? data
-        : [];
-
-
-    if (
-      !records.length
-    ) {
-
-      redCardTableBody.innerHTML = `
-
-        <tr>
-
-          <td colspan="7">
-            No Red Card records found.
-          </td>
-
-        </tr>
-
+      transactionContainer.innerHTML = `
+        <article>
+          <strong>No finance records yet.</strong>
+          <span>
+            Finance transactions will appear here
+            once they are recorded.
+          </span>
+        </article>
       `;
 
-      return;
     }
 
-
-    redCardTableBody.innerHTML =
-      records.map(
-        (record) => `
-
-          <tr>
-
-            <td>
-              ${escapeHTML(
-                record.member_name ||
-                "—"
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                record.year_level ||
-                "—"
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                record.section ||
-                "—"
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                record.offense ||
-                record.description ||
-                "—"
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                record.card_level ||
-                "—"
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                record.status ||
-                "—"
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                formatDate(
-                  record.incident_date
-                )
-              )}
-            </td>
-
-          </tr>
-
-        `
-      ).join("");
+    return;
 
   }
 
-  catch (error) {
+
+  /*
+     Display transaction list
+  */
+
+  if (transactionContainer) {
+
+    transactionContainer.innerHTML =
+      records
+        .map(
+          (record) => {
+
+            const amount =
+              Number(
+                record.amount
+              ) || 0;
+
+
+            const type =
+              record.transaction_type;
+
+
+            const amountDisplay =
+              type === "income"
+                ? `+₱${formatCurrency(amount)}`
+                : `-₱${formatCurrency(amount)}`;
+
+
+            const date =
+              formatFinanceDate(
+                record.transaction_date
+              );
+
+
+            const description =
+              record.description ||
+              "No description";
+
+
+            const reference =
+              record.reference ||
+              "No reference";
+
+
+            return `
+
+              <article class="finance-transaction">
+
+                <div>
+
+                  <strong>
+                    ${escapeHTML(
+                      record.category
+                    )}
+                  </strong>
+
+                  <span>
+                    ${escapeHTML(
+                      description
+                    )}
+                  </span>
+
+                </div>
+
+
+                <div>
+
+                  <strong>
+                    ${amountDisplay}
+                  </strong>
+
+                  <span>
+                    ${escapeHTML(
+                      date
+                    )}
+                  </span>
+
+                  <span>
+                    ${escapeHTML(
+                      reference
+                    )}
+                  </span>
+
+                </div>
+
+              </article>
+
+            `;
+
+          }
+        )
+        .join("");
+
+  }
+
+}
+
+
+/* =========================================================
+   FINANCE CURRENCY FORMAT
+========================================================= */
+
+function formatCurrency(
+  amount
+) {
+
+  return Number(
+    amount || 0
+  ).toLocaleString(
+    "en-PH",
+    {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }
+  );
+
+}
+
+
+/* =========================================================
+   FINANCE DATE FORMAT
+========================================================= */
+
+function formatFinanceDate(
+  date
+) {
+
+  if (!date) {
+
+    return "No date";
+
+  }
+
+
+  const parsedDate =
+    new Date(
+      `${date}T00:00:00`
+    );
+
+
+  if (
+    Number.isNaN(
+      parsedDate.getTime()
+    )
+  ) {
+
+    return date;
+
+  }
+
+
+  return parsedDate.toLocaleDateString(
+    "en-PH",
+    {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    }
+  );
+
+}
+
+/* =========================================================
+   RED CARD RECORDS
+========================================================= */
+
+/* =========================================================
+   RED CARD TRACKER
+========================================================= */
+
+async function loadRedCardRecords() {
+
+  const tableBody =
+    document.getElementById(
+      "redCardTableBody"
+    );
+
+  const yearFilter =
+    document.getElementById(
+      "redCardYear"
+    );
+
+
+  if (!tableBody) {
+
+    return;
+
+  }
+
+
+  /*
+     Only authenticated members can access
+     Red Card information.
+  */
+
+  if (!isMemberLoggedIn()) {
+
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="7">
+          🔒 Member access required.
+        </td>
+      </tr>
+    `;
+
+    return;
+
+  }
+
+
+  /*
+     Loading state
+  */
+
+  tableBody.innerHTML = `
+    <tr>
+      <td colspan="7">
+        Loading Red Card records...
+      </td>
+    </tr>
+  `;
+
+
+  /*
+     Build the Supabase query.
+
+     RLS decides what the current user
+     is actually allowed to see.
+  */
+
+  let query =
+    supabaseClient
+      .from("red_card_records")
+      .select(`
+        id,
+        member_id,
+        member_name,
+        year_level,
+        section,
+        offense,
+        description,
+        card_level,
+        status,
+        incident_date,
+        recorded_by,
+        created_at
+      `)
+      .order(
+        "incident_date",
+        {
+          ascending: false
+        }
+      )
+      .order(
+        "id",
+        {
+          ascending: false
+        }
+      );
+
+
+  /*
+     Optional year-level filter
+  */
+
+  const selectedYear =
+    yearFilter
+      ? yearFilter.value
+      : "";
+
+
+  if (
+    selectedYear &&
+    selectedYear !== "all"
+  ) {
+
+    query =
+      query.eq(
+        "year_level",
+        selectedYear
+      );
+
+  }
+
+
+  /*
+     Execute query
+  */
+
+  const {
+    data,
+    error
+  } =
+    await query;
+
+
+  /*
+     Handle database error
+  */
+
+  if (error) {
 
     console.error(
       "Red Card loading error:",
@@ -2677,29 +1967,177 @@ async function loadRedCardRecords() {
     );
 
 
-    redCardTableBody.innerHTML = `
-
+    tableBody.innerHTML = `
       <tr>
-
         <td colspan="7">
-          Unable to load Red Card records.
+          ⚠️ Unable to load Red Card records.
         </td>
-
       </tr>
-
     `;
 
 
     showToast(
-      getSupabaseErrorMessage(
-        error,
-        "Unable to load Red Card records."
-      ),
-      "error"
+      "⚠️ Unable to load Red Card records."
     );
+
+    return;
+
   }
+
+
+  const records =
+    Array.isArray(data)
+      ? data
+      : [];
+
+
+  /*
+     No records
+  */
+
+  if (
+    records.length === 0
+  ) {
+
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="7">
+          No Red Card records found.
+        </td>
+      </tr>
+    `;
+
+    return;
+
+  }
+
+
+  /*
+     Render records
+  */
+
+  tableBody.innerHTML =
+    records
+      .map(
+        (record) => {
+
+          const statusClass =
+            record.status === "resolved"
+              ? "resolved"
+              : "active";
+
+
+          const cardLevel =
+            Number(
+              record.card_level
+            ) || 1;
+
+
+          return `
+
+            <tr>
+
+              <td>
+                ${escapeHTML(
+                  record.member_name
+                )}
+              </td>
+
+              <td>
+                ${escapeHTML(
+                  record.year_level ||
+                  "—"
+                )}
+              </td>
+
+              <td>
+                ${escapeHTML(
+                  record.section ||
+                  "—"
+                )}
+              </td>
+
+              <td>
+                ${escapeHTML(
+                  record.offense
+                )}
+              </td>
+
+              <td>
+                Red Card ${cardLevel}
+              </td>
+
+              <td>
+                <span
+                  class="red-card-status ${statusClass}"
+                >
+                  ${escapeHTML(
+                    record.status
+                  )}
+                </span>
+              </td>
+
+              <td>
+                ${formatRedCardDate(
+                  record.incident_date
+                )}
+              </td>
+
+            </tr>
+
+          `;
+
+        }
+      )
+      .join("");
+
 }
 
+
+/* =========================================================
+   RED CARD DATE FORMAT
+========================================================= */
+
+function formatRedCardDate(
+  date
+) {
+
+  if (!date) {
+
+    return "—";
+
+  }
+
+
+  const parsedDate =
+    new Date(
+      `${date}T00:00:00`
+    );
+
+
+  if (
+    Number.isNaN(
+      parsedDate.getTime()
+    )
+  ) {
+
+    return escapeHTML(
+      date
+    );
+
+  }
+
+
+  return parsedDate.toLocaleDateString(
+    "en-PH",
+    {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    }
+  );
+
+}
 
 /* =========================================================
    MEMBER REVIEWERS
@@ -2707,74 +2145,81 @@ async function loadRedCardRecords() {
 
 async function loadMemberReviewers() {
 
-  if (
-    !hasApprovedMemberAccess()
-  ) {
-
-    showAccessDeniedMessage();
-
-    return;
-  }
-
-
-  /*
-    MATCHES YOUR HTML:
-    memberReviewerList
-  */
-
   const container =
-    document.getElementById(
-      "memberReviewerList"
-    );
+    document.getElementById("memberReviewerList");
+
+  if (!container) return;
 
 
-  if (!container) {
+  if (!isMemberLoggedIn()) {
+
+    container.innerHTML = `
+      <article>
+
+        <strong>
+          🔒 Member access required
+        </strong>
+
+        <span>
+          Please log in as an SME member to view
+          member reviewers.
+        </span>
+
+      </article>
+    `;
 
     return;
   }
 
 
   container.innerHTML = `
-
     <article>
 
       <strong>
         Loading member reviewers...
       </strong>
 
-    </article>
+      <span>
+        Please wait while the reviewer repository loads.
+      </span>
 
+    </article>
   `;
 
 
   try {
 
-    const {
-      data,
-      error
-    } =
+    const { data, error } =
       await supabaseClient
-        .from(
-          "reviewer_submissions"
-        )
-        .select(
-          "id, title, subject, year_level, description, file_name, file_path, file_size, file_type, status, created_at"
-        )
-        .eq(
-          "status",
-          "approved"
-        )
-        .order(
-          "created_at",
-          {
-            ascending: false
-          }
-        );
+        .from("reviewer_submissions")
+        .select(`
+          id,
+          title,
+          subject,
+          year_level,
+          description,
+          file_name,
+          file_path,
+          file_size,
+          file_type,
+          status,
+          created_at
+        `)
+        .eq("status", "approved")
+        .order("created_at", {
+          ascending: false
+        });
 
 
     if (error) {
 
+      console.error(
+        "Member reviewers loading error:",
+        error
+      );
+
       throw error;
+
     }
 
 
@@ -2784,161 +2229,207 @@ async function loadMemberReviewers() {
         : [];
 
 
-    if (
-      !reviewers.length
-    ) {
+    if (reviewers.length === 0) {
 
       container.innerHTML = `
-
         <article>
 
           <strong>
-            No approved member reviewers yet.
+            No approved reviewers yet
           </strong>
 
           <span>
-            Approved reviewers will appear here.
+            Approved SME member reviewers will appear here.
           </span>
 
         </article>
-
       `;
 
       return;
+
     }
 
 
     container.innerHTML =
-      reviewers.map(
-        (reviewer) => `
+      reviewers.map(reviewer => {
+
+        const description =
+          reviewer.description
+            ? `
+              <span>
+                ${escapeHTML(
+                  reviewer.description
+                )}
+              </span>
+            `
+            : "";
+
+
+        return `
 
           <article>
 
             <strong>
-
               ${escapeHTML(
-                reviewer.title ||
-                "Untitled Reviewer"
+                reviewer.title
               )}
-
             </strong>
 
 
             <span>
 
-              Subject:
               ${escapeHTML(
-                reviewer.subject ||
-                "—"
+                reviewer.subject
               )}
 
-              <br>
+              •
 
-              Year Level:
               ${escapeHTML(
-                reviewer.year_level ||
-                "—"
+                reviewer.year_level
               )}
 
             </span>
 
 
-            ${
-              reviewer.description
-                ? `
-                  <p>
-                    ${escapeHTML(
-                      reviewer.description
-                    )}
-                  </p>
-                `
-                : ""
-            }
+            ${description}
 
 
-            ${
-              reviewer.file_path
-                ? `
-                  <button
-                    type="button"
-                    class="primary-button"
-                    data-reviewer-file="${escapeHTML(
-                      reviewer.file_path
-                    )}"
-                  >
-                    📖 Open Reviewer
-                  </button>
-                `
-                : ""
-            }
+            <div
+  style="
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  "
+>
+
+  <span>
+    File:
+    ${escapeHTML(
+      submission.file_name
+    )}
+  </span>
+
+
+  <button
+    type="button"
+    class="secondary-button"
+    data-verification-file="${escapeHTML(
+      submission.id
+    )}"
+  >
+    📄 Open File
+  </button>
+
+</div>
+
+
+            <small>
+
+              Approved reviewer
+
+            </small>
+
+
+            <button
+              type="button"
+              class="primary-button"
+              data-reviewer-file-id="${reviewer.id}"
+              data-reviewer-file-path="${escapeHTML(
+                reviewer.file_path
+              )}"
+              style="margin-top:10px;"
+            >
+
+              📖 Open Reviewer
+
+            </button>
 
           </article>
 
-        `
-      ).join("");
+        `;
 
-  }
+      }).join("");
 
-  catch (error) {
+
+  } catch (error) {
 
     console.error(
-      "Member reviewer loading error:",
+      "Failed to load member reviewers:",
       error
     );
 
 
     container.innerHTML = `
-
       <article>
 
         <strong>
-          Unable to load member reviewers.
+          ⚠️ Unable to load reviewers
         </strong>
 
-      </article>
+        <span>
+          Please try again later.
+        </span>
 
+      </article>
     `;
 
 
     showToast(
-      getSupabaseErrorMessage(
-        error,
-        "Unable to load member reviewers."
-      ),
-      "error"
+      "⚠️ Unable to load member reviewers."
     );
+
   }
+
 }
 
-
 /* =========================================================
-   OPEN REVIEWER FILE
+   OPEN APPROVED MEMBER REVIEWER
 ========================================================= */
 
-async function openReviewerFile(
-  filePath
-) {
+document.addEventListener("click", async function (event) {
 
-  if (
-    !hasApprovedMemberAccess()
-  ) {
+  const button = event.target.closest(
+    "[data-reviewer-file-id]"
+  );
 
-    showAccessDeniedMessage();
+  if (!button) return;
+
+
+  if (!isMemberLoggedIn()) {
+
+    showToast(
+      "🔒 Member access required."
+    );
 
     return;
   }
 
 
+  const filePath =
+    button.dataset.reviewerFilePath;
+
+
+  if (!filePath) {
+
+    showToast(
+      "⚠️ Reviewer file path is missing."
+    );
+
+    return;
+  }
+
+
+  button.disabled = true;
+  button.textContent = "Opening...";
+
+
   try {
 
-    const {
-      data,
-      error
-    } =
+    const { data, error } =
       await supabaseClient.storage
-        .from(
-          "reviewer-files"
-        )
+        .from("reviewer-files")
         .createSignedUrl(
           filePath,
           60 * 10
@@ -2947,17 +2438,22 @@ async function openReviewerFile(
 
     if (error) {
 
+      console.error(
+        "Reviewer signed URL error:",
+        error
+      );
+
       throw error;
+
     }
 
 
-    if (
-      !data?.signedUrl
-    ) {
+    if (!data?.signedUrl) {
 
       throw new Error(
-        "Unable to create reviewer file URL."
+        "Unable to generate reviewer access link."
       );
+
     }
 
 
@@ -2967,272 +2463,170 @@ async function openReviewerFile(
       "noopener,noreferrer"
     );
 
-  }
 
-  catch (error) {
+  } catch (error) {
 
     console.error(
-      "Reviewer file error:",
+      "Failed to open reviewer:",
       error
     );
 
 
     showToast(
-      getSupabaseErrorMessage(
-        error,
-        "Unable to open reviewer file."
-      ),
-      "error"
+      "⚠️ Unable to open reviewer file."
     );
-  }
-}
 
+
+  } finally {
+
+    button.disabled = false;
+    button.textContent = "📖 Open Reviewer";
+
+  }
+
+});
 
 /* =========================================================
    REVIEWER UPLOAD
 ========================================================= */
 
-async function handleReviewerUpload(
-  event
-) {
-
+async function handleReviewerUpload(event) {
   event.preventDefault();
 
+  const titleInput = document.getElementById("reviewerTitle");
+  const subjectInput = document.getElementById("reviewerSubject");
+  const yearLevelInput = document.getElementById("reviewerYearLevel");
+  const descriptionInput = document.getElementById("reviewerDescription");
+  const fileInput = document.getElementById("reviewerFile");
+  const uploadMessage = document.getElementById("uploadMessage");
 
-  if (
-    !hasApprovedMemberAccess()
-  ) {
+  if (!isMemberLoggedIn()) {
+    if (uploadMessage) {
+      uploadMessage.textContent =
+        "🔒 Please log in as an SME member first.";
+    }
 
-    showAccessDeniedMessage();
+    showToast("🔒 Member access required.");
+    return;
+  }
+
+  const title = titleInput ? titleInput.value.trim() : "";
+  const subject = subjectInput ? subjectInput.value.trim() : "";
+  const yearLevel = yearLevelInput ? yearLevelInput.value.trim() : "";
+  const description = descriptionInput
+    ? descriptionInput.value.trim()
+    : "";
+  const file = fileInput?.files?.[0];
+
+  if (!title || !subject || !yearLevel || !file) {
+    if (uploadMessage) {
+      uploadMessage.textContent =
+        "Please complete the required fields and select a file.";
+    }
 
     return;
   }
 
-
-  const title =
-    getInputValue(
-      "reviewerTitle"
-    );
-
-
-  const description =
-    getInputValue(
-      "reviewerDescription"
-    );
-
-
-  const subject =
-    getInputValue(
-      "reviewerSubject"
-    );
-
-
-  const yearLevel =
-    getInputValue(
-      "reviewerYearLevel"
-    );
-
-
-  const fileInput =
-    document.getElementById(
-      "reviewerFile"
-    );
-
-
-  /*
-    MATCHES YOUR HTML:
-    uploadMessage
-  */
-
-  const message =
-    document.getElementById(
-      "uploadMessage"
-    );
-
-
-  const file =
-    fileInput?.files?.[0];
-
-
-  if (
-    !title ||
-    !description ||
-    !subject ||
-    !yearLevel ||
-    !file
-  ) {
-
-    setFormMessage(
-      message,
-      "Please complete all required fields and select a file.",
-      "error"
-    );
-
-    return;
+  if (uploadMessage) {
+    uploadMessage.textContent =
+      "Uploading reviewer...";
   }
-
-
-  setFormMessage(
-    message,
-    "Uploading reviewer...",
-    "info"
-  );
-
 
   try {
+    const user = currentSession?.user;
 
-    const userId =
-      currentSession.user.id;
+    if (!user) {
+      throw new Error("No authenticated member session found.");
+    }
 
-
-    const safeFileName =
-      sanitizeFileName(
-        file.name
-      );
-
+    const safeFileName = file.name
+      .replace(/[^a-zA-Z0-9._-]/g, "_");
 
     const filePath =
-      `${userId}/${Date.now()}_${safeFileName}`;
+      `${user.id}/${Date.now()}_${safeFileName}`;
 
-
-    const {
-      error:
-        uploadError
-    } =
+    const { error: uploadError } =
       await supabaseClient.storage
-        .from(
-          "reviewer-files"
-        )
-        .upload(
-          filePath,
-          file,
-          {
-            upsert: false
-          }
-        );
+        .from("reviewer-files")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false
+        });
 
-
-    if (
-      uploadError
-    ) {
+    if (uploadError) {
+      console.error(
+        "Reviewer file upload error:",
+        uploadError
+      );
 
       throw uploadError;
     }
 
-
-    const {
-      error:
-        insertError
-    } =
+    const { data: submission, error: insertError } =
       await supabaseClient
-        .from(
-          "reviewer_submissions"
-        )
+        .from("reviewer_submissions")
         .insert({
+          user_id: user.id,
+          title,
+          subject,
+          year_level: yearLevel,
+          description: description || null,
+          file_name: file.name,
+          file_path: filePath,
+          file_size: file.size,
+          file_type: file.type || null,
+          status: "pending"
+        })
+        .select()
+        .single();
 
-          user_id:
-            userId,
+    if (insertError) {
+      console.error(
+        "Reviewer submission database error:",
+        insertError
+      );
 
-          title:
-            title,
-
-          subject:
-            subject,
-
-          year_level:
-            yearLevel,
-
-          description:
-            description,
-
-          file_name:
-            file.name,
-
-          file_path:
-            filePath,
-
-          file_size:
-            file.size,
-
-          file_type:
-            file.type,
-
-          status:
-            "pending"
-
-        });
-
-
-    if (
-      insertError
-    ) {
-
-      try {
-
-        await supabaseClient.storage
-          .from(
-            "reviewer-files"
-          )
-          .remove([
-            filePath
-          ]);
-
-      }
-
-      catch (cleanupError) {
-
-        console.warn(
-          "Storage cleanup failed:",
-          cleanupError
-        );
-      }
-
+      // Remove uploaded file if database insertion fails.
+      await supabaseClient.storage
+        .from("reviewer-files")
+        .remove([filePath]);
 
       throw insertError;
     }
 
-
-    setFormMessage(
-      message,
-      "Reviewer submitted successfully. It is now pending verification.",
-      "success"
+    console.log(
+      "Reviewer submission created:",
+      submission
     );
 
-
-    if (
-      fileInput
-    ) {
-
-      fileInput.value =
-        "";
+    if (uploadMessage) {
+      uploadMessage.textContent =
+        "✅ Reviewer uploaded successfully and is pending approval.";
     }
 
-
     showToast(
-      "Reviewer submitted for verification.",
-      "success"
+      "✅ Reviewer submitted for approval."
     );
 
+    event.target.reset();
 
-    await loadMyReviewerSubmissions();
+    if (typeof loadMyReviewerSubmissions === "function") {
+      await loadMyReviewerSubmissions();
+    }
 
-  }
-
-  catch (error) {
-
+  } catch (error) {
     console.error(
-      "Reviewer upload error:",
+      "Reviewer upload failed:",
       error
     );
 
+    if (uploadMessage) {
+      uploadMessage.textContent =
+        `⚠️ Upload failed: ${error.message}`;
+    }
 
-    setFormMessage(
-      message,
-      getSupabaseErrorMessage(
-        error,
-        "Unable to upload reviewer."
-      ),
-      "error"
+    showToast(
+      "⚠️ Reviewer upload failed."
     );
   }
 }
@@ -3243,624 +2637,200 @@ async function handleReviewerUpload(
 ========================================================= */
 
 async function loadMyReviewerSubmissions() {
-
-  if (
-    !hasApprovedMemberAccess()
-  ) {
-
-    return;
-  }
-
-
   const container =
-    document.getElementById(
-      "myReviewerSubmissions"
-    );
+    document.getElementById("myReviewerSubmissions");
 
+  if (!container) return;
 
-  if (!container) {
-
+  if (!isMemberLoggedIn()) {
+    container.innerHTML = `
+      <article>
+        <strong>🔒 Member access required</strong>
+        <span>
+          Please log in to view your reviewer submissions.
+        </span>
+      </article>
+    `;
     return;
   }
 
+  container.innerHTML = `
+    <article>
+      <strong>Loading submissions...</strong>
+      <span>
+        Please wait while your reviewer submissions are loaded.
+      </span>
+    </article>
+  `;
 
   try {
+    const user = currentSession?.user;
 
-    const {
-      data,
-      error
-    } =
+    if (!user) {
+      throw new Error("No authenticated member session found.");
+    }
+
+    const { data, error } =
       await supabaseClient
-        .from(
-          "reviewer_submissions"
-        )
-        .select(
-          "id, title, subject, year_level, description, file_name, file_path, file_size, file_type, status, rejection_reason, created_at, reviewed_at"
-        )
-        .eq(
-          "user_id",
-          currentSession.user.id
-        )
-        .order(
-          "created_at",
-          {
-            ascending: false
-          }
-        );
-
+        .from("reviewer_submissions")
+        .select(`
+          id,
+          title,
+          subject,
+          year_level,
+          description,
+          file_name,
+          file_size,
+          file_type,
+          status,
+          rejection_reason,
+          created_at,
+          reviewed_at
+        `)
+        .eq("user_id", user.id)
+        .order("created_at", {
+          ascending: false
+        });
 
     if (error) {
+      console.error(
+        "Reviewer submissions loading error:",
+        error
+      );
 
       throw error;
     }
 
+    const submissions = Array.isArray(data)
+      ? data
+      : [];
 
-    const submissions =
-      Array.isArray(data)
-        ? data
-        : [];
-
-
-    if (
-      !submissions.length
-    ) {
-
+    if (submissions.length === 0) {
       container.innerHTML = `
-
         <article>
-
-          <strong>
-            No submissions yet.
-          </strong>
-
+          <strong>No submissions yet</strong>
           <span>
             Your submitted reviewers will appear here.
           </span>
-
         </article>
-
       `;
 
       return;
     }
 
-
     container.innerHTML =
-      submissions.map(
-        (submission) => `
+      submissions.map(submission => {
 
+        const status = submission.status || "pending";
+
+        const statusLabel =
+          status === "approved"
+            ? "Approved"
+            : status === "rejected"
+              ? "Rejected"
+              : "Pending Verification";
+
+        const statusClass =
+          status === "approved"
+            ? "approved"
+            : status === "rejected"
+              ? "rejected"
+              : "pending";
+
+        const rejectionText =
+          status === "rejected" &&
+          submission.rejection_reason
+            ? `
+              <small>
+                Reason: ${escapeHTML(
+                  submission.rejection_reason
+                )}
+              </small>
+            `
+            : "";
+
+        return `
           <article>
-
             <strong>
-              ${escapeHTML(
-                submission.title ||
-                "Untitled Reviewer"
-              )}
+              ${escapeHTML(submission.title)}
             </strong>
 
-
             <span>
-
-              ${escapeHTML(
-                submission.subject ||
-                "—"
-              )}
-
-              ·
-
-              ${escapeHTML(
-                submission.year_level ||
-                "—"
-              )}
-
-              <br>
-
-              Status:
-              ${escapeHTML(
-                submission.status ||
-                "pending"
-              )}
-
+              ${escapeHTML(submission.subject)}
+              •
+              ${escapeHTML(submission.year_level)}
             </span>
 
+            <span>
+              File:
+              ${escapeHTML(submission.file_name)}
+            </span>
 
-            ${
-              submission.rejection_reason
-                ? `
-                  <p>
+            <span class="reviewer-status ${statusClass}">
+              ${statusLabel}
+            </span>
 
-                    <strong>
-                      Rejection Reason:
-                    </strong>
+            ${rejectionText}
 
-                    ${escapeHTML(
-                      submission.rejection_reason
-                    )}
-
-                  </p>
-                `
-                : ""
-            }
-
+            <small>
+              Submitted:
+              ${formatReviewerDate(
+                submission.created_at
+              )}
+            </small>
           </article>
+        `;
 
-        `
-      ).join("");
+      }).join("");
 
-  }
-
-  catch (error) {
-
+  } catch (error) {
     console.error(
-      "Submission loading error:",
+      "Failed to load reviewer submissions:",
       error
     );
-
 
     container.innerHTML = `
-
       <article>
-
-        <strong>
-          Unable to load your submissions.
-        </strong>
-
+        <strong>⚠️ Unable to load submissions</strong>
+        <span>
+          Please try again later.
+        </span>
       </article>
-
-    `;
-  }
-}
-
-
-/* =========================================================
-   REVIEWER VERIFICATION
-========================================================= */
-
-async function loadReviewerVerificationSubmissions() {
-
-  if (
-    !isOfficerOrAdmin()
-  ) {
-
-    showToast(
-      "Officer or Admin access is required.",
-      "error"
-    );
-
-    return;
-  }
-
-
-  const container =
-    document.getElementById(
-      "reviewerVerificationList"
-    );
-
-
-  if (!container) {
-
-    return;
-  }
-
-
-  container.innerHTML = `
-
-    <article>
-
-      <strong>
-        Loading reviewer submissions...
-      </strong>
-
-    </article>
-
-  `;
-
-
-  try {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from(
-          "reviewer_submissions"
-        )
-        .select(
-          "id, user_id, title, subject, year_level, description, file_name, file_path, file_size, file_type, status, rejection_reason, created_at, reviewed_at, reviewed_by"
-        )
-        .order(
-          "created_at",
-          {
-            ascending: false
-          }
-        );
-
-
-    if (error) {
-
-      throw error;
-    }
-
-
-    const submissions =
-      Array.isArray(data)
-        ? data
-        : [];
-
-
-    if (
-      !submissions.length
-    ) {
-
-      container.innerHTML = `
-
-        <article>
-
-          <strong>
-            No reviewer submissions found.
-          </strong>
-
-        </article>
-
-      `;
-
-      return;
-    }
-
-
-    container.innerHTML =
-      submissions.map(
-        (submission) => {
-
-          const status =
-            String(
-              submission.status ||
-              "pending"
-            ).toLowerCase();
-
-
-          return `
-
-            <article>
-
-              <strong>
-
-                ${escapeHTML(
-                  submission.title ||
-                  "Untitled Reviewer"
-                )}
-
-              </strong>
-
-
-              <span>
-
-                Subject:
-                ${escapeHTML(
-                  submission.subject ||
-                  "—"
-                )}
-
-                <br>
-
-                Year Level:
-                ${escapeHTML(
-                  submission.year_level ||
-                  "—"
-                )}
-
-                <br>
-
-                File:
-                ${escapeHTML(
-                  submission.file_name ||
-                  "—"
-                )}
-
-                <br>
-
-                Status:
-                ${escapeHTML(
-                  status
-                )}
-
-              </span>
-
-
-              ${
-                submission.description
-                  ? `
-                    <p>
-                      ${escapeHTML(
-                        submission.description
-                      )}
-                    </p>
-                  `
-                  : ""
-              }
-
-
-              ${
-                submission.file_path
-                  ? `
-                    <button
-                      type="button"
-                      class="primary-button"
-                      data-reviewer-file="${escapeHTML(
-                        submission.file_path
-                      )}"
-                    >
-                      View File
-                    </button>
-                  `
-                  : ""
-              }
-
-
-              ${
-                status ===
-                "pending"
-                  ? `
-
-                    <div
-                      class="verification-actions"
-                      style="
-                        display: flex;
-                        gap: 10px;
-                        margin-top: 14px;
-                      "
-                    >
-
-                      <button
-                        type="button"
-                        class="primary-button"
-                        data-reviewer-verification-action="approve"
-                        data-submission-id="${escapeHTML(
-                          submission.id
-                        )}"
-                      >
-                        ✅ Approve
-                      </button>
-
-
-                      <button
-                        type="button"
-                        class="secondary-button"
-                        data-reviewer-verification-action="reject"
-                        data-submission-id="${escapeHTML(
-                          submission.id
-                        )}"
-                      >
-                        ❌ Reject
-                      </button>
-
-                    </div>
-
-                  `
-                  : ""
-              }
-
-            </article>
-
-          `;
-        }
-      ).join("");
-
-  }
-
-  catch (error) {
-
-    console.error(
-      "Verification loading error:",
-      error
-    );
-
-
-    container.innerHTML = `
-
-      <article>
-
-        <strong>
-          Unable to load reviewer submissions.
-        </strong>
-
-      </article>
-
     `;
 
-
     showToast(
-      getSupabaseErrorMessage(
-        error,
-        "Unable to load reviewer submissions."
-      ),
-      "error"
+      "⚠️ Unable to load reviewer submissions."
     );
   }
 }
 
 
-/* =========================================================
-   REVIEWER VERIFICATION ACTION
-========================================================= */
+function formatReviewerDate(date) {
+  if (!date) return "—";
 
-async function handleReviewerVerificationAction(
-  action,
-  submissionId
-) {
+  const parsedDate = new Date(date);
 
-  if (
-    !isOfficerOrAdmin()
-  ) {
-
-    showToast(
-      "Officer or Admin access is required.",
-      "error"
-    );
-
-    return;
+  if (Number.isNaN(parsedDate.getTime())) {
+    return escapeHTML(String(date));
   }
 
-
-  const normalizedAction =
-    String(
-      action
-    )
-      .trim()
-      .toLowerCase();
-
-
-  if (
-    normalizedAction !==
-      "approve" &&
-    normalizedAction !==
-      "reject"
-  ) {
-
-    return;
-  }
-
-
-  let rejectionReason =
-    null;
-
-
-  if (
-    normalizedAction ===
-    "reject"
-  ) {
-
-    rejectionReason =
-      window.prompt(
-        "Enter the reason for rejecting this reviewer:"
-      );
-
-
-    if (
-      rejectionReason ===
-      null
-    ) {
-
-      return;
-    }
-
-
-    rejectionReason =
-      rejectionReason.trim();
-
-
-    if (
-      !rejectionReason
-    ) {
-
-      showToast(
-        "A rejection reason is required.",
-        "warning"
-      );
-
-      return;
-    }
-  }
-
-
-  const newStatus =
-    normalizedAction ===
-    "approve"
-      ? "approved"
-      : "rejected";
-
-
-  try {
-
-    const {
-      error
-    } =
-      await supabaseClient
-        .from(
-          "reviewer_submissions"
-        )
-        .update({
-
-          status:
-            newStatus,
-
-          rejection_reason:
-            rejectionReason,
-
-          reviewed_by:
-            currentSession.user.id,
-
-          reviewed_at:
-            new Date().toISOString()
-
-        })
-        .eq(
-          "id",
-          submissionId
-        );
-
-
-    if (error) {
-
-      throw error;
-    }
-
-
-    showToast(
-      normalizedAction ===
-        "approve"
-        ? "Reviewer approved."
-        : "Reviewer rejected.",
-      "success"
-    );
-
-
-    await loadReviewerVerificationSubmissions();
-
-  }
-
-  catch (error) {
-
-    console.error(
-      "Verification action error:",
-      error
-    );
-
-
-    showToast(
-      getSupabaseErrorMessage(
-        error,
-        "Unable to update reviewer submission."
-      ),
-      "error"
-    );
-  }
+  return parsedDate.toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
 }
-
 
 /* =========================================================
    TOAST
 ========================================================= */
 
-function showToast(
-  message,
-  type = "info"
-) {
+function showToast(message) {
 
   if (!toast) {
 
     return;
-  }
 
-
-  if (
-    toastTimeout
-  ) {
-
-    clearTimeout(
-      toastTimeout
-    );
   }
 
 
@@ -3868,17 +2838,13 @@ function showToast(
     message;
 
 
-  toast.className =
-    "toast";
-
-
   toast.classList.add(
-    type
+    "show"
   );
 
 
-  toast.classList.add(
-    "show"
+  clearTimeout(
+    toastTimeout
   );
 
 
@@ -3891,266 +2857,9 @@ function showToast(
         );
 
       },
-      4000
-    );
-}
-
-
-/* =========================================================
-   FORM MESSAGE
-========================================================= */
-
-function setFormMessage(
-  element,
-  message,
-  type = "info"
-) {
-
-  if (!element) {
-
-    return;
-  }
-
-
-  element.textContent =
-    message;
-
-
-  element.className =
-    "form-message";
-
-
-  element.classList.add(
-    type
-  );
-}
-
-
-/* =========================================================
-   INPUT VALUE
-========================================================= */
-
-function getInputValue(
-  id
-) {
-
-  const element =
-    document.getElementById(
-      id
+      3000
     );
 
-
-  return element
-    ? String(
-        element.value ||
-        ""
-      ).trim()
-    : "";
-}
-
-
-/* =========================================================
-   ERROR MESSAGE
-========================================================= */
-
-function getSupabaseErrorMessage(
-  error,
-  fallback
-) {
-
-  if (!error) {
-
-    return fallback;
-  }
-
-
-  const message =
-    String(
-      error.message ||
-      ""
-    ).trim();
-
-
-  if (!message) {
-
-    return fallback;
-  }
-
-
-  const lower =
-    message.toLowerCase();
-
-
-  if (
-    lower.includes(
-      "invalid login credentials"
-    )
-  ) {
-
-    return "Incorrect email or password.";
-  }
-
-
-  if (
-    lower.includes(
-      "email not confirmed"
-    )
-  ) {
-
-    return "Please confirm your email before logging in.";
-  }
-
-
-  if (
-    lower.includes(
-      "user already registered"
-    )
-  ) {
-
-    return "An account with this email already exists.";
-  }
-
-
-  return message;
-}
-
-
-/* =========================================================
-   CURRENCY
-========================================================= */
-
-function formatCurrency(
-  amount
-) {
-
-  const number =
-    Number(
-      amount
-    ) || 0;
-
-
-  return new Intl.NumberFormat(
-    "en-PH",
-    {
-      style:
-        "currency",
-
-      currency:
-        "PHP"
-    }
-  ).format(
-    number
-  );
-}
-
-
-/* =========================================================
-   DATE
-========================================================= */
-
-function formatDate(
-  value
-) {
-
-  if (!value) {
-
-    return "—";
-  }
-
-
-  const date =
-    new Date(
-      value
-    );
-
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-
-    return String(
-      value
-    );
-  }
-
-
-  return date.toLocaleDateString(
-    "en-PH",
-    {
-      year:
-        "numeric",
-
-      month:
-        "short",
-
-      day:
-        "numeric"
-    }
-  );
-}
-
-
-/* =========================================================
-   FILE NAME
-========================================================= */
-
-function sanitizeFileName(
-  fileName
-) {
-
-  return String(
-    fileName ||
-    "file"
-  )
-    .replace(
-      /[^a-zA-Z0-9._-]/g,
-      "_"
-    );
-}
-
-
-/* =========================================================
-   HTML ESCAPE
-========================================================= */
-
-function escapeHTML(
-  value
-) {
-
-  if (
-    value === null ||
-    value === undefined
-  ) {
-
-    return "";
-  }
-
-
-  return String(
-    value
-  )
-    .replace(
-      /&/g,
-      "&amp;"
-    )
-    .replace(
-      /</g,
-      "&lt;"
-    )
-    .replace(
-      />/g,
-      "&gt;"
-    )
-    .replace(
-      /"/g,
-      "&quot;"
-    )
-    .replace(
-      /'/g,
-      "&#039;"
-    );
 }
 
 
@@ -4160,19 +2869,17 @@ function escapeHTML(
 
 function initializeRevealAnimations() {
 
-  const elements =
+  const revealElements =
     document.querySelectorAll(
-      ".reveal, [data-reveal]"
+      ".reveal"
     );
 
 
-  if (
-    !elements.length
-  ) {
-
-    return;
-  }
-
+  /*
+     IMPORTANT:
+     If animation fails for any reason,
+     the content must remain visible.
+  */
 
   if (
     !(
@@ -4181,17 +2888,18 @@ function initializeRevealAnimations() {
     )
   ) {
 
-    elements.forEach(
+    revealElements.forEach(
       (element) => {
 
         element.classList.add(
-          "visible"
+          "active"
         );
 
       }
     );
 
     return;
+
   }
 
 
@@ -4207,13 +2915,13 @@ function initializeRevealAnimations() {
             ) {
 
               entry.target.classList.add(
-                "visible"
+                "active"
               );
-
 
               observer.unobserve(
                 entry.target
               );
+
             }
 
           }
@@ -4221,13 +2929,12 @@ function initializeRevealAnimations() {
 
       },
       {
-        threshold:
-          0.08
+        threshold: 0.05
       }
     );
 
 
-  elements.forEach(
+  revealElements.forEach(
     (element) => {
 
       observer.observe(
@@ -4236,105 +2943,915 @@ function initializeRevealAnimations() {
 
     }
   );
+
 }
 
 
 /* =========================================================
-   MATH BACKGROUND
+   ESCAPE HTML
 ========================================================= */
 
-(function initializeMathBackground() {
+function escapeHTML(value) {
 
-  function start() {
+  return String(
+    value ?? ""
+  )
 
-    const container =
-      document.querySelector(
-        ".math-background"
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+
+    .replace(
+      /</g,
+      "&lt;"
+    )
+
+    .replace(
+      />/g,
+      "&gt;"
+    )
+
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+
+}
+/* =========================================================
+   REVIEWER VERIFICATION ACCESS
+========================================================= */
+
+document.addEventListener("click", function (event) {
+
+  const button = event.target.closest(
+    '[data-member-feature="reviewer-verification"]'
+  );
+
+  if (!button) return;
+
+  event.preventDefault();
+
+  // Must be logged in first
+  if (!isMemberLoggedIn()) {
+    showToast("🔒 Officer/Admin access required.");
+    return;
+  }
+
+  // Check the logged-in user's role
+  const role =
+    currentMember?.role ||
+    currentSession?.user?.user_metadata?.role ||
+    "";
+
+  const normalizedRole = String(role).toLowerCase();
+
+  // Only Officer and Admin may access verification
+  if (
+    normalizedRole !== "officer" &&
+    normalizedRole !== "admin"
+  ) {
+    showToast(
+      "⛔ Reviewer Verification is restricted to Officers and Admins."
+    );
+
+    return;
+  }
+
+  // Close any currently open window
+  closeAllWindows();
+
+  // Open Reviewer Verification
+  const verificationWindow =
+    document.getElementById(
+      "reviewerVerificationWindow"
+    );
+
+  if (!verificationWindow) {
+    console.error(
+      "Reviewer Verification window was not found."
+    );
+
+    showToast(
+      "⚠️ Reviewer Verification window not found."
+    );
+
+    return;
+  }
+
+  const overlay =
+    document.getElementById("windowOverlay");
+
+  if (overlay) {
+    overlay.classList.add("active");
+    overlay.setAttribute("aria-hidden", "false");
+  }
+
+  verificationWindow.classList.add("active");
+
+  // Load pending reviewer submissions
+  if (
+    typeof loadReviewerVerificationSubmissions ===
+    "function"
+  ) {
+    loadReviewerVerificationSubmissions();
+  }
+
+});
+/* =========================================================
+   REVIEWER VERIFICATION — LOAD SUBMISSIONS
+========================================================= */
+
+async function loadReviewerVerificationSubmissions() {
+
+  const container =
+    document.getElementById(
+      "reviewerVerificationList"
+    );
+
+  if (!container) return;
+
+
+  if (!isMemberLoggedIn()) {
+
+    container.innerHTML = `
+      <article>
+
+        <strong>
+          🔒 Access Required
+        </strong>
+
+        <span>
+          Please log in as an SME Officer or Admin.
+        </span>
+
+      </article>
+    `;
+
+    return;
+  }
+
+
+  const role =
+    currentMember?.role ||
+    currentSession?.user?.user_metadata?.role ||
+    "";
+
+  const normalizedRole =
+    String(role).toLowerCase();
+
+
+  if (
+    normalizedRole !== "officer" &&
+    normalizedRole !== "admin"
+  ) {
+
+    container.innerHTML = `
+      <article>
+
+        <strong>
+          ⛔ Unauthorized
+        </strong>
+
+        <span>
+          Reviewer verification is restricted to Officers
+          and Admins.
+        </span>
+
+      </article>
+    `;
+
+    return;
+  }
+
+
+  container.innerHTML = `
+    <div
+      style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:12px;
+        margin-bottom:16px;
+      "
+    >
+
+      <div>
+
+        <strong>
+          Reviewer Submissions
+        </strong>
+
+        <span style="display:block;">
+          Review submitted member reviewers.
+        </span>
+
+      </div>
+
+
+      <button
+        type="button"
+        class="secondary-button"
+        id="refreshReviewerVerification"
+      >
+        🔄 Refresh
+      </button>
+
+    </div>
+
+
+    <article>
+
+      <strong>
+        Loading submissions...
+      </strong>
+
+      <span>
+        Please wait while reviewer submissions are loaded.
+      </span>
+
+    </article>
+  `;
+
+
+  const refreshButton =
+    document.getElementById(
+      "refreshReviewerVerification"
+    );
+
+
+  if (refreshButton) {
+
+    refreshButton.addEventListener(
+      "click",
+      function () {
+
+        loadReviewerVerificationSubmissions();
+
+      }
+    );
+
+  }
+
+
+  try {
+
+    const { data, error } =
+      await supabaseClient
+        .from("reviewer_submissions")
+        .select(`
+          id,
+          user_id,
+          title,
+          subject,
+          year_level,
+          description,
+          file_name,
+          file_size,
+          file_type,
+          status,
+          rejection_reason,
+          created_at,
+          reviewed_at
+        `)
+        .order("created_at", {
+          ascending: false
+        });
+
+
+    if (error) {
+
+      console.error(
+        "Reviewer verification loading error:",
+        error
       );
 
+      throw error;
 
-    if (!container) {
+    }
+
+
+    const submissions =
+      Array.isArray(data)
+        ? data
+        : [];
+
+
+    const header = `
+      <div
+        style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:12px;
+          margin-bottom:16px;
+        "
+      >
+
+        <div>
+
+          <strong>
+            Reviewer Submissions
+          </strong>
+
+          <span style="display:block;">
+            ${submissions.length}
+            submission${submissions.length === 1 ? "" : "s"}
+          </span>
+
+        </div>
+
+
+        <button
+          type="button"
+          class="secondary-button"
+          id="refreshReviewerVerification"
+        >
+          🔄 Refresh
+        </button>
+
+      </div>
+    `;
+
+
+    if (submissions.length === 0) {
+
+      container.innerHTML = `
+        ${header}
+
+        <article>
+
+          <strong>
+            No reviewer submissions
+          </strong>
+
+          <span>
+            There are currently no reviewer submissions
+            to verify.
+          </span>
+
+        </article>
+      `;
+
+      attachReviewerVerificationRefresh();
 
       return;
     }
 
 
-    /*
-      Your HTML already contains the math symbols.
-      Therefore we do NOT generate another set.
+    container.innerHTML =
+      header +
 
-      This prevents duplicated symbols.
-    */
+      submissions.map(submission => {
 
-    container.dataset.initialized =
-      "true";
-  }
+        const status =
+          submission.status || "pending";
 
 
-  if (
-    document.readyState ===
-    "loading"
-  ) {
+        const statusLabel =
+          status === "approved"
+            ? "Approved"
+            : status === "rejected"
+              ? "Rejected"
+              : "Pending Verification";
 
-    document.addEventListener(
-      "DOMContentLoaded",
-      start
+
+        const statusClass =
+          status === "approved"
+            ? "approved"
+            : status === "rejected"
+              ? "rejected"
+              : "pending";
+
+
+        const description =
+          submission.description
+            ? `
+              <span>
+                ${escapeHTML(
+                  submission.description
+                )}
+              </span>
+            `
+            : "";
+
+
+        const rejectionText =
+          status === "rejected" &&
+          submission.rejection_reason
+            ? `
+              <small>
+                Rejection Reason:
+                ${escapeHTML(
+                  submission.rejection_reason
+                )}
+              </small>
+            `
+            : "";
+
+
+        return `
+
+          <article>
+
+            <strong>
+              ${escapeHTML(
+                submission.title
+              )}
+            </strong>
+
+
+            <span>
+
+              ${escapeHTML(
+                submission.subject
+              )}
+
+              •
+
+              ${escapeHTML(
+                submission.year_level
+              )}
+
+            </span>
+
+
+            ${description}
+
+
+            <span>
+
+              File:
+              ${escapeHTML(
+                submission.file_name
+              )}
+
+            </span>
+
+
+            <span
+              class="reviewer-status ${statusClass}"
+            >
+              ${statusLabel}
+            </span>
+
+
+            <small>
+
+              Submitted:
+              ${formatReviewerDate(
+                submission.created_at
+              )}
+
+            </small>
+
+
+            ${rejectionText}
+
+
+            ${
+              status === "pending"
+                ? `
+                  <div
+                    class="verification-actions"
+                    style="
+                      display:flex;
+                      gap:10px;
+                      margin-top:12px;
+                    "
+                  >
+
+                    <button
+                      type="button"
+                      class="primary-button"
+                      data-reviewer-action="approve"
+                      data-reviewer-id="${submission.id}"
+                    >
+                      ✅ Approve
+                    </button>
+
+
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      data-reviewer-action="reject"
+                      data-reviewer-id="${submission.id}"
+                    >
+                      ❌ Reject
+                    </button>
+
+                  </div>
+                `
+                : ""
+            }
+
+          </article>
+
+        `;
+
+      }).join("");
+
+
+    attachReviewerVerificationRefresh();
+
+
+  } catch (error) {
+
+    console.error(
+      "Failed to load reviewer verification submissions:",
+      error
+    );
+
+
+    container.innerHTML = `
+      <article>
+
+        <strong>
+          ⚠️ Unable to load submissions
+        </strong>
+
+        <span>
+          ${escapeHTML(
+            error.message ||
+            "Please try again later."
+          )}
+        </span>
+
+      </article>
+    `;
+
+
+    showToast(
+      "⚠️ Unable to load reviewer submissions."
     );
 
   }
 
-  else {
+}
 
-    start();
+
+function attachReviewerVerificationRefresh() {
+
+  const refreshButton =
+    document.getElementById(
+      "refreshReviewerVerification"
+    );
+
+
+  if (!refreshButton) return;
+
+
+  refreshButton.addEventListener(
+    "click",
+    function () {
+
+      loadReviewerVerificationSubmissions();
+
+    }
+  );
+
+}
+/* =========================================================
+   REVIEWER VERIFICATION — APPROVE / REJECT
+========================================================= */
+
+document.addEventListener("click", async function (event) {
+
+  const button = event.target.closest(
+    "[data-reviewer-action]"
+  );
+
+  if (!button) return;
+
+
+  const action =
+    button.dataset.reviewerAction;
+
+  const reviewerId =
+    button.dataset.reviewerId;
+
+
+  if (!reviewerId) {
+    showToast("⚠️ Reviewer ID is missing.");
+    return;
   }
+
+
+  if (!isMemberLoggedIn()) {
+    showToast("🔒 Officer/Admin access required.");
+    return;
+  }
+
+
+  const role =
+    currentMember?.role ||
+    currentSession?.user?.user_metadata?.role ||
+    "";
+
+  const normalizedRole =
+    String(role).toLowerCase();
+
+
+  if (
+    normalizedRole !== "officer" &&
+    normalizedRole !== "admin"
+  ) {
+    showToast(
+      "⛔ You are not authorized to verify reviewers."
+    );
+
+    return;
+  }
+
+
+  if (action === "approve") {
+
+    const confirmed =
+      confirm(
+        "Approve this reviewer?\n\n" +
+        "It will become available to authorized SME members."
+      );
+
+    if (!confirmed) return;
+
+
+    button.disabled = true;
+    button.textContent = "Approving...";
+
+
+    try {
+
+      const { data, error } =
+        await supabaseClient
+          .from("reviewer_submissions")
+          .update({
+            status: "approved",
+            rejection_reason: null,
+            reviewed_by: currentSession.user.id,
+            reviewed_at: new Date().toISOString()
+          })
+          .eq("id", reviewerId)
+          .select()
+          .single();
+
+
+      if (error) {
+
+        console.error(
+          "Reviewer approval error:",
+          error
+        );
+
+        throw error;
+
+      }
+
+
+      console.log(
+        "Reviewer approved:",
+        data
+      );
+
+
+      showToast(
+        "✅ Reviewer approved successfully."
+      );
+
+
+      await loadReviewerVerificationSubmissions();
+
+
+    } catch (error) {
+
+      console.error(
+        "Failed to approve reviewer:",
+        error
+      );
+
+
+      button.disabled = false;
+      button.textContent = "✅ Approve";
+
+
+      showToast(
+        "⚠️ Failed to approve reviewer."
+      );
+
+    }
+
+    return;
+  }
+
+
+
+  if (action === "reject") {
+
+    const reason =
+      prompt(
+        "Enter the reason for rejecting this reviewer:"
+      );
+
+
+    if (reason === null) {
+      return;
+    }
+
+
+    const trimmedReason =
+      reason.trim();
+
+
+    if (!trimmedReason) {
+
+      showToast(
+        "⚠️ Please provide a rejection reason."
+      );
+
+      return;
+
+    }
+
+
+    button.disabled = true;
+    button.textContent = "Rejecting...";
+
+
+    try {
+
+      const { data, error } =
+        await supabaseClient
+          .from("reviewer_submissions")
+          .update({
+            status: "rejected",
+            rejection_reason: trimmedReason,
+            reviewed_by: currentSession.user.id,
+            reviewed_at: new Date().toISOString()
+          })
+          .eq("id", reviewerId)
+          .select()
+          .single();
+
+
+      if (error) {
+
+        console.error(
+          "Reviewer rejection error:",
+          error
+        );
+
+        throw error;
+
+      }
+
+
+      console.log(
+        "Reviewer rejected:",
+        data
+      );
+
+
+      showToast(
+        "❌ Reviewer rejected."
+      );
+
+
+      await loadReviewerVerificationSubmissions();
+
+
+    } catch (error) {
+
+      console.error(
+        "Failed to reject reviewer:",
+        error
+      );
+
+
+      button.disabled = false;
+      button.textContent = "❌ Reject";
+
+
+      showToast(
+        "⚠️ Failed to reject reviewer."
+      );
+
+    }
+
+  }
+
+});
+/* =========================================================
+   SIATP INTERACTIVE MATHEMATICAL BACKGROUND
+   ========================================================= */
+
+(function initMathBackgroundInteraction() {
+
+  const background =
+    document.querySelector(".math-background");
+
+  if (!background) return;
+
+  /*
+   * Disable mouse interaction for users who prefer
+   * reduced motion.
+   */
+  if (
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    return;
+  }
+
+  const symbols =
+    background.querySelectorAll(".math-symbol");
+
+  const shapes =
+    background.querySelectorAll(".math-shape");
+
+  let mouseX = 0;
+  let mouseY = 0;
+
+  let targetX = 0;
+  let targetY = 0;
+
+  let animationFrame = null;
+
+  /*
+   * Track mouse position.
+   */
+  document.addEventListener(
+    "mousemove",
+    function (event) {
+
+      targetX =
+        (event.clientX / window.innerWidth - 0.5) * 2;
+
+      targetY =
+        (event.clientY / window.innerHeight - 0.5) * 2;
+
+    },
+    { passive: true }
+  );
+
+  /*
+   * Smoothly follow the mouse.
+   */
+  function animateMathBackground() {
+
+    mouseX += (targetX - mouseX) * 0.025;
+    mouseY += (targetY - mouseY) * 0.025;
+
+    symbols.forEach(function (symbol, index) {
+
+      const depth =
+        2 + (index % 4) * 1.5;
+
+      const x =
+        mouseX * depth;
+
+      const y =
+        mouseY * depth;
+
+      symbol.style.marginLeft =
+        `${x}px`;
+
+      symbol.style.marginTop =
+        `${y}px`;
+
+    });
+
+    shapes.forEach(function (shape, index) {
+
+      const depth =
+        1.5 + (index % 3);
+
+      const x =
+        mouseX * depth;
+
+      const y =
+        mouseY * depth;
+
+      shape.style.marginLeft =
+        `${x}px`;
+
+      shape.style.marginTop =
+        `${y}px`;
+
+    });
+
+    animationFrame =
+      requestAnimationFrame(
+        animateMathBackground
+      );
+  }
+
+  animationFrame =
+    requestAnimationFrame(
+      animateMathBackground
+    );
 
 })();
-
-
-/* =========================================================
-   OPTIONAL DEBUG ACCESS
-========================================================= */
-
-window.SIATP = {
-
-  getSession() {
-
-    return currentSession;
-  },
-
-
-  getMember() {
-
-    return currentMember;
-  },
-
-
-  getRole() {
-
-    return getCurrentRole();
-  },
-
-
-  isAuthenticated() {
-
-    return isAuthenticated();
-  },
-
-
-  hasMemberAccess() {
-
-    return hasApprovedMemberAccess();
-  },
-
-
-  isOfficerOrAdmin() {
-
-    return isOfficerOrAdmin();
-  }
-
-};
-
-
-/* =========================================================
-   END OF SCRIPT
-========================================================= */
