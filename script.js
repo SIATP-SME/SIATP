@@ -282,7 +282,332 @@ if (memberSignupForm) {
 
 }
   }
+/* =========================================================
+   MEMBER SIGNUP
+========================================================= */
 
+async function handleMemberSignup(event) {
+
+  event.preventDefault();
+
+
+  const firstNameInput =
+    document.getElementById(
+      "signupFirstName"
+    );
+
+  const middleNameInput =
+    document.getElementById(
+      "signupMiddleName"
+    );
+
+  const lastNameInput =
+    document.getElementById(
+      "signupLastName"
+    );
+
+  const yearLevelInput =
+    document.getElementById(
+      "signupYearLevel"
+    );
+
+  const sectionInput =
+    document.getElementById(
+      "signupSection"
+    );
+
+  const emailInput =
+    document.getElementById(
+      "signupEmail"
+    );
+
+  const passwordInput =
+    document.getElementById(
+      "signupPassword"
+    );
+
+  const confirmPasswordInput =
+    document.getElementById(
+      "signupConfirmPassword"
+    );
+
+  const signupMessage =
+    document.getElementById(
+      "signupMessage"
+    );
+
+
+  const firstName =
+    firstNameInput
+      ? firstNameInput.value.trim()
+      : "";
+
+  const middleName =
+    middleNameInput
+      ? middleNameInput.value.trim()
+      : "";
+
+  const lastName =
+    lastNameInput
+      ? lastNameInput.value.trim()
+      : "";
+
+  const yearLevel =
+    yearLevelInput
+      ? yearLevelInput.value
+      : "";
+
+  const section =
+    sectionInput
+      ? sectionInput.value.trim()
+      : "";
+
+  const email =
+    emailInput
+      ? emailInput.value.trim()
+      : "";
+
+  const password =
+    passwordInput
+      ? passwordInput.value
+      : "";
+
+  const confirmPassword =
+    confirmPasswordInput
+      ? confirmPasswordInput.value
+      : "";
+
+
+  /* -------------------------------------------------------
+     Validation
+  ------------------------------------------------------- */
+
+  if (
+    !firstName ||
+    !lastName ||
+    !yearLevel ||
+    !section ||
+    !email ||
+    !password ||
+    !confirmPassword
+  ) {
+
+    if (signupMessage) {
+
+      signupMessage.textContent =
+        "Please complete all required fields.";
+
+    }
+
+    return;
+
+  }
+
+
+  if (password.length < 6) {
+
+    if (signupMessage) {
+
+      signupMessage.textContent =
+        "Password must be at least 6 characters.";
+
+    }
+
+    return;
+
+  }
+
+
+  if (password !== confirmPassword) {
+
+    if (signupMessage) {
+
+      signupMessage.textContent =
+        "Passwords do not match.";
+
+    }
+
+    return;
+
+  }
+
+
+  /* -------------------------------------------------------
+     Show loading state
+  ------------------------------------------------------- */
+
+  if (signupMessage) {
+
+    signupMessage.textContent =
+      "Creating your account...";
+
+  }
+
+
+  try {
+
+    /* -----------------------------------------------------
+       Create Supabase Auth account
+
+       The metadata is automatically picked up by
+       handle_new_user() in Supabase.
+    ----------------------------------------------------- */
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient.auth.signUp({
+
+        email,
+
+        password,
+
+        options: {
+
+          data: {
+
+            first_name:
+              firstName,
+
+            middle_name:
+              middleName,
+
+            last_name:
+              lastName,
+
+            year_level:
+              yearLevel,
+
+            section:
+              section
+
+          }
+
+        }
+
+      });
+
+
+    if (error) {
+
+      console.error(
+        "Signup error:",
+        error
+      );
+
+      if (signupMessage) {
+
+        signupMessage.textContent =
+          error.message;
+
+      }
+
+      showToast(
+        `❌ ${error.message}`
+      );
+
+      return;
+
+    }
+
+
+    /* -----------------------------------------------------
+       Successful registration
+    ----------------------------------------------------- */
+
+    console.log(
+      "Membership application created:",
+      data
+    );
+
+
+    if (signupMessage) {
+
+      signupMessage.innerHTML = `
+        <strong>
+          ✅ Application submitted successfully.
+        </strong>
+        <br><br>
+        Your SME membership application is now
+        <strong>Pending Assessment</strong>.
+        <br><br>
+        An SME Officer or Administrator must
+        review and approve your application
+        before member access is granted.
+      `;
+
+    }
+
+
+    showToast(
+      "✅ Membership application submitted."
+    );
+
+
+    /* -----------------------------------------------------
+       Clear sensitive password fields
+    ----------------------------------------------------- */
+
+    if (passwordInput) {
+
+      passwordInput.value = "";
+
+    }
+
+    if (confirmPasswordInput) {
+
+      confirmPasswordInput.value = "";
+
+    }
+
+
+    /* -----------------------------------------------------
+       If Supabase returned a session, keep the
+       applicant restricted because their profile
+       role is "pending".
+    ----------------------------------------------------- */
+
+    if (data.session) {
+
+      currentSession =
+        data.session;
+
+      currentMember =
+        data.user;
+
+      await loadCurrentMemberProfile();
+
+      updateNavigation();
+
+      updateMemberDashboard();
+
+    }
+
+
+  } catch (error) {
+
+    console.error(
+      "Unexpected signup error:",
+      error
+    );
+
+
+    if (signupMessage) {
+
+      signupMessage.textContent =
+        "Something went wrong while creating your account. Please try again.";
+
+    }
+
+
+    showToast(
+      "❌ Unable to submit membership application."
+    );
+
+  }
+
+}
 
   /* =========================================
      RED CARD YEAR
