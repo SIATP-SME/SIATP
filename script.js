@@ -1155,34 +1155,30 @@ supabaseClient.auth.onAuthStateChange(
 ========================================================= */
 
 function updateNavigation() {
-
   if (!navAuthArea) {
-
     return;
-
   }
 
-
-  if (
-    isMemberLoggedIn()
-  ) {
-
-    const name =
+  if (isMemberLoggedIn()) {
+    const fullName =
       currentMember?.name ||
+      currentMember?.profile?.full_name ||
       currentMember?.email ||
       "SME Member";
 
+    // Get first name only
+    const firstName =
+      String(fullName)
+        .trim()
+        .split(/\s+/)[0] || "Member";
 
     navAuthArea.innerHTML = `
-
       <button
         class="nav-button"
         type="button"
         data-action="member-login"
       >
-
-        👤 ${escapeHTML(name)}
-
+        👤 ${escapeHTML(firstName)}
       </button>
 
       <button
@@ -1190,32 +1186,22 @@ function updateNavigation() {
         type="button"
         data-action="logout"
       >
-
         Logout
-
       </button>
-
     `;
 
     return;
-
   }
 
-
   navAuthArea.innerHTML = `
-
     <button
       class="nav-button"
       type="button"
       data-action="member-login"
     >
-
       🔐 Member Login
-
     </button>
-
   `;
-
 }
 
 
