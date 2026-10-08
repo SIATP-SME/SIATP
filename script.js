@@ -373,6 +373,12 @@ function handleAction(action) {
       }
 
       break;
+        
+        case "member-signup":
+
+  openWindow("member-signup");
+
+  break;
 
 
     case "public-lessons":
