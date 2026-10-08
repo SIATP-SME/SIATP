@@ -141,23 +141,45 @@ document.addEventListener(
   "DOMContentLoaded",
   async () => {
 
-    cacheDOM();
+    try {
 
-    initializeRevealAnimations();
+      cacheDOM();
 
-    renderPublicReviewers();
-    renderVideoLessons();
+      // TEMPORARILY DISABLED
+      // initializeRevealAnimations();
 
-    setupEventListeners();
+      renderPublicReviewers();
 
-    await restoreMemberSession();
+      renderVideoLessons();
 
-    updateNavigation();
-    updateMemberDashboard();
+      setupEventListeners();
+
+      await restoreMemberSession();
+
+      updateNavigation();
+
+      updateMemberDashboard();
+
+      updateRoleBasedUI();
+
+    }
+
+    catch (error) {
+
+      console.error(
+        "SIATP initialization error:",
+        error
+      );
+
+      showToast(
+        "The website encountered an initialization problem. Please refresh the page.",
+        "error"
+      );
+
+    }
 
   }
 );
-
 
 /* =========================================================
    CACHE DOM
