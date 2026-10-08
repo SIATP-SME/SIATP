@@ -1510,6 +1510,18 @@ async function restoreMemberSession() {
 
 
               updateNavigation();
+               function updateRoleBasedUI() {
+  const reviewerVerificationButton =
+    document.querySelector('[data-member-feature="reviewer-verification"]');
+
+  if (!reviewerVerificationButton) return;
+
+  if (isOfficerOrAdmin()) {
+    reviewerVerificationButton.style.display = "";
+  } else {
+    reviewerVerificationButton.style.display = "none";
+  }
+}
               updateMemberDashboard();
 
             }
