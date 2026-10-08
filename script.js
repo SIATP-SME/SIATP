@@ -2144,193 +2144,117 @@ function formatRedCardDate(
 ========================================================= */
 
 async function loadMemberReviewers() {
+  const list = document.getElementById("memberReviewerList");
 
-  const container =
-    document.getElementById("memberReviewerList");
+  if (!list) return;
 
-  if (!container) return;
-
+  list.innerHTML = `
+    <div class="empty-state">
+      <p>Loading reviewers...</p>
+    </div>
+  `;
 
   if (!isMemberLoggedIn()) {
-
-    container.innerHTML = `
-      <article>
-
-        <strong>
-          🔒 Member access required
-        </strong>
-
-        <span>
-          Please log in as an SME member to view
-          member reviewers.
-        </span>
-
-      </article>
+    list.innerHTML = `
+      <div class="empty-state">
+        <p>🔒 Please log in to access SME Member Reviewers.</p>
+      </div>
     `;
-
     return;
   }
 
-
-  container.innerHTML = `
-    <article>
-
-      <strong>
-        Loading member reviewers...
-      </strong>
-
-      <span>
-        Please wait while the reviewer repository loads.
-      </span>
-
-    </article>
-  `;
-
-
   try {
-
-    const { data, error } =
-      await supabaseClient
-        .from("reviewer_submissions")
-        .select(`
-          id,
-          title,
-          subject,
-          year_level,
-          description,
-          file_name,
-          file_path,
-          file_size,
-          file_type,
-          status,
-          created_at
-        `)
-        .eq("status", "approved")
-        .order("created_at", {
-          ascending: false
-        });
-
+    const { data: reviewers, error } = await supabaseClient
+      .from("reviewer_submissions")
+      .select(`
+        id,
+        title,
+        subject,
+        year_level,
+        description,
+        file_name,
+        file_path,
+        file_size,
+        file_type,
+        status,
+        created_at
+      `)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false });
 
     if (error) {
-
-      console.error(
-        "Member reviewers loading error:",
-        error
-      );
-
       throw error;
-
     }
 
-
-    const reviewers =
-      Array.isArray(data)
-        ? data
-        : [];
-
-
-    if (reviewers.length === 0) {
-
-      container.innerHTML = `
-        <article>
-
-          <strong>
-            No approved reviewers yet
-          </strong>
-
-          <span>
-            Approved SME member reviewers will appear here.
-          </span>
-
-        </article>
+    if (!reviewers || reviewers.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <p>No approved member reviewers are available yet.</p>
+        </div>
       `;
-
       return;
-
     }
 
-
-    container.innerHTML =
-      reviewers.map(reviewer => {
-
-        const description =
-          reviewer.description
-            ? `
-              <span>
-                ${escapeHTML(
-                  reviewer.description
-                )}
-              </span>
-            `
-            : "";
-
+    list.innerHTML = reviewers
+      .map((reviewer) => {
+        const submittedDate = reviewer.created_at
+          ? new Date(reviewer.created_at).toLocaleDateString(
+              "en-US",
+              {
+                year: "numeric",
+                month: "short",
+                day: "numeric"
+              }
+            )
+          : "Unknown date";
 
         return `
+          <div class="reviewer-card">
+            <div class="reviewer-card-header">
+              <div>
+                <h3>${escapeHTML(reviewer.title)}</h3>
 
-          <article>
+                <p>
+                  ${escapeHTML(reviewer.subject)}
+                  •
+                  ${escapeHTML(reviewer.year_level)}
+                </p>
+              </div>
 
-            <strong>
-              ${escapeHTML(
-                reviewer.title
-              )}
-            </strong>
+              <span class="status-badge approved">
+                Approved
+              </span>
+            </div>
 
-
-            <span>
-
-              ${escapeHTML(
-                reviewer.subject
-              )}
-
-              •
-
-              ${escapeHTML(
-                reviewer.year_level
-              )}
-
-            </span>
-
-
-            ${description}
-
+            ${
+              reviewer.description
+                ? `
+                  <p class="reviewer-description">
+                    ${escapeHTML(reviewer.description)}
+                  </p>
+                `
+                : ""
+            }
 
             <div
-  style="
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    flex-wrap:wrap;
-  "
->
+              style="
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                gap:12px;
+                flex-wrap:wrap;
+              "
+            >
+              <span>
+                File:
+                ${escapeHTML(reviewer.file_name)}
+              </span>
 
-  <span>
-    File:
-    ${escapeHTML(
-      submission.file_name
-    )}
-  </span>
-
-
-  <button
-    type="button"
-    class="secondary-button"
-    data-verification-file="${escapeHTML(
-      submission.id
-    )}"
-  >
-    📄 Open File
-  </button>
-
-</div>
-
-
-            <small>
-
-              Approved reviewer
-
-            </small>
-
+              <span>
+                Submitted:
+                ${submittedDate}
+              </span>
+            </div>
 
             <button
               type="button"
@@ -2341,49 +2265,26 @@ async function loadMemberReviewers() {
               )}"
               style="margin-top:10px;"
             >
-
               📖 Open Reviewer
-
             </button>
-
-          </article>
-
+          </div>
         `;
-
-      }).join("");
-
+      })
+      .join("");
 
   } catch (error) {
+    console.error("Failed to load member reviewers:", error);
 
-    console.error(
-      "Failed to load member reviewers:",
-      error
-    );
-
-
-    container.innerHTML = `
-      <article>
-
-        <strong>
-          ⚠️ Unable to load reviewers
-        </strong>
-
-        <span>
+    list.innerHTML = `
+      <div class="empty-state">
+        <p>
+          ⚠️ Unable to load reviewers.
           Please try again later.
-        </span>
-
-      </article>
+        </p>
+      </div>
     `;
-
-
-    showToast(
-      "⚠️ Unable to load member reviewers."
-    );
-
   }
-
 }
-
 /* =========================================================
    OPEN APPROVED MEMBER REVIEWER
 ========================================================= */
